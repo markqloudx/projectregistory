@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">{{ project.project_id }}</p><h1>{{ project.name }}</h1><p>{{ project.description or "No description provided." }}</p></div>
+  <div class="button-row"><a class="button secondary" href="/projects/{{ project.project_id }}/edit">Edit details</a><a class="button primary" href="/projects/{{ project.project_id }}/request-production">Request production</a></div>
+</div>
+
+<section class="identity-grid">
+  <article class="panel"><h2>Project identity</h2><dl>
+    <div><dt>Status</dt><dd><span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span></dd></div>
+    <div><dt>Team</dt><dd>{{ project.team_name }}</dd></div>
+    <div><dt>Technical owner</dt><dd>{{ project.technical_owner_email }}</dd></div>
+    <div><dt>Business owner</dt><dd>{{ project.business_owner_email }}</dd></div>
+    <div><dt>Classification</dt><dd>{{ project.data_classification }}</dd></div>
+    <div><dt>Go-live</dt><dd>{{ project.go_live_date or "Not set" }}</dd></div>
+  </dl></article>
+  <article class="panel route-card"><h2>Fixed environment route</h2>
+    <div class="route"><span><small>Development</small><strong>{{ settings.dev_workspace_name }}</strong><code>{{ settings.dev_catalog }}</code></span><b>→</b><span><small>Production</small><strong>{{ settings.prod_workspace_name }}</strong><code>{{ settings.prod_catalog }}</code></span></div>
+    <p>Bundle-defined development prefixes are allowed. Governance does not rename assets.</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><div><h2>Mandatory development tags</h2><p>All selected production assets must match these values.</p></div><button id="scan-assets" class="button secondary" data-project-id="{{ project.project_id }}">Scan assets</button></div>
+  <div class="tag-chips">
+  {% for key,value in required_tags.items() %}<code>{{ key }}={{ value }}</code>{% endfor %}
+  </div>
+  <div id="scan-results" class="scan-results"><div class="empty compact">Run a scan to discover tagged jobs, pipelines, and Unity Catalog assets.</div></div>
+</section>
+
+<section class="panel">
+  <div class="panel-heading"><h2>Production requests</h2><a href="/projects/{{ project.project_id }}/request-production">New request</a></div>
+  {% if production_requests %}
+  <div class="list">
+  {% for item in production_requests %}
+    <a class="list-row" href="/production-requests/{{ item.request_id }}"><span><strong>{{ item.request_id }}</strong><small>{{ item.change_summary or item.repository_uri }}</small></span><span class="badge status-{{ item.request_status|lower|replace('_','-') }}">{{ item.request_status|replace('_',' ') }}</span></a>
+  {% endfor %}
+  </div>
+  {% else %}<div class="empty">No production request has been created for this project.</div>{% endif %}
+</section>
+{% endblock %}

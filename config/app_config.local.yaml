@@ -1,0 +1,41 @@
+version: 4.0.0
+backend: memory
+registry:
+  host: https://dbc-8589af37-05e5.cloud.databricks.com
+  catalog: it_dev
+  schema: project_governance_registry
+  warehouse_id: 0f13ee558569480e
+workspaces:
+  dev_name: operations-dev
+  dev_host: https://dbc-9c07a238-9e1e.cloud.databricks.com
+  dev_warehouse_id: "" # Set DEV_SQL_WAREHOUSE_ID for asset scans.
+  prod_name: operations-prod
+  prod_host: https://dbc-eadde54f-6391.cloud.databricks.com
+  prod_warehouse_id: "" # Set PROD_SQL_WAREHOUSE_ID for production tag verification.
+catalogs:
+  dev: foundry_dev
+  prod: foundry_prod
+project_defaults:
+  workspace: operations-dev to operations-prod
+  data_classifications: [Public, Internal, Confidential, Restricted]
+  teams: [Operations Analytics]
+security:
+  admin_principals: [admin@example.com]
+  approver_principals: [approver@example.com]
+  development_validator_principals: [dev-validator@example.com]
+  auditor_principals: [auditor@example.com]
+  production_deployer_principals: [prod-deployer@example.com]
+  allow_self_approval: false
+  trust_local_identity_headers: true
+automation:
+  dev_validation_job_id: "23456"
+  app_direct_url: http://localhost:8000
+  request_expiry_hours: 72
+deployment_profiles:
+  default:
+    display_name: Local test deployer
+    team_names: [Operations Analytics]
+    job_id: "12345"
+    principals: [prod-deployer@example.com]
+    allowed_schemas: []
+    allowed_workspace_roots: [/Workspace/Shared/.governance/bundles, /Workspace/Shared/Operations]

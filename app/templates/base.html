@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · Project Registry</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">PR</span>
+      <span><strong>Project Registry</strong><small>Governance v{{ version }}</small></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="/projects">My projects</a>
+      <a href="/production-requests">Production requests</a>
+      {% if is_approver %}<a href="/approvals">Approval queue</a>{% endif %}
+      {% if is_auditor %}<a href="/audit">Audit</a>{% endif %}
+      <a href="/help">Help</a>
+    </nav>
+    <div class="identity" title="Authenticated Databricks identity">{{ actor.subject }}</div>
+  </header>
+  <main class="page-shell">
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <span>{{ settings.dev_workspace_name }} / {{ settings.dev_catalog }}</span>
+    <span aria-hidden="true">→</span>
+    <span>{{ settings.prod_workspace_name }} / {{ settings.prod_catalog }}</span>
+  </footer>
+  <script src="/static/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

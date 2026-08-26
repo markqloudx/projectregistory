@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading compact"><div><p class="eyebrow">User guide</p><h1>How the simplified flow works</h1></div></div>
+<div class="guide-grid">
+<section class="panel guide"><span>1</span><h2>Register</h2><p>Enter project ownership, team, classification, and useful business context. The app generates a permanent <code>PRJ-*</code> ID.</p></section>
+<section class="panel guide"><span>2</span><h2>Build in development</h2><p>Use notebooks, jobs, pipelines, dashboards, Apps, SQL, or Git folders in <strong>{{ settings.dev_workspace_name }}</strong> and <strong>{{ settings.dev_catalog }}</strong>.</p></section>
+<section class="panel guide"><span>3</span><h2>Tag assets</h2><p>Selected assets need <code>project_tag</code>, <code>environment</code>, and <code>data_classification</code>. Default Bundle name prefixes are allowed.</p></section>
+<section class="panel guide"><span>4</span><h2>Request production</h2><p>Select assets and identify the Git branch and Bundle. A protected validator checks both Bundle targets and source tags. No SHA is requested; revisions are recorded only as audit evidence.</p></section>
+<section class="panel guide"><span>5</span><h2>Approve and deploy</h2><p>An approver reviews the request. Approval rechecks tags and queues a team-scoped production deployment job running as a protected service principal.</p></section>
+<section class="panel guide"><span>6</span><h2>Verify</h2><p>The production worker deploys, runs optional validation, reads all mandatory production tags back, and records terminal status and evidence.</p></section>
+</div>
+<section class="panel"><h2>Mandatory tag values</h2><table><thead><tr><th>Key</th><th>Development</th><th>Production</th></tr></thead><tbody><tr><td><code>project_tag</code></td><td colspan="2">The registered project ID</td></tr><tr><td><code>environment</code></td><td>dev</td><td>prod</td></tr><tr><td><code>data_classification</code></td><td colspan="2">The project’s registered classification</td></tr></tbody></table></section>
+{% endblock %}

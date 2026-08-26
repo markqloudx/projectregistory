@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Assurance</p><h1>Audit trail</h1><p>Append-only governance events for projects, decisions, dispatch, and deployment.</p></div></div>
+<section class="panel table-panel">{% if events %}<table><thead><tr><th>Time</th><th>Event</th><th>Project / request</th><th>Actor</th><th>Transition</th><th>Comment</th></tr></thead><tbody>{% for event in events %}<tr><td>{{ event.event_at }}</td><td><strong>{{ event.event_type }}</strong></td><td>{{ event.project_id }}<small class="block">{{ event.request_id }}</small></td><td>{{ event.actor }}<small class="block">{{ event.actor_type }}</small></td><td>{{ event.previous_status }}{% if event.new_status %} → {{ event.new_status }}{% endif %}</td><td>{{ event.comment }}</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty">No audit events.</div>{% endif %}</section>
+{% endblock %}

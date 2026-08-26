@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">{{ "Governance" if approval_queue else "Delivery" }}</p><h1>{{ title }}</h1><p>{{ "Requests that passed current development tag validation and need a decision." if approval_queue else "Track validation, approval, deployment, and production tag evidence." }}</p></div></div>
+<section class="panel table-panel">
+{% if production_requests %}
+<table>
+<thead><tr><th>Request</th><th>Project</th><th>Requested by</th><th>Repository / branch</th><th>Status</th><th></th></tr></thead>
+<tbody>{% for item in production_requests %}<tr>
+<td><strong>{{ item.request_id }}</strong><small class="block">{{ item.requested_at or '' }}</small></td>
+<td>{{ item.project_name or item.project_id }}<small class="block">{{ item.project_id }}</small></td>
+<td>{{ item.requested_by }}</td>
+<td>{{ item.repository_uri }}<small class="block">{{ item.git_branch }}</small></td>
+<td><span class="badge status-{{ item.request_status|lower|replace('_','-') }}">{{ item.request_status|replace('_',' ') }}</span></td>
+<td><a href="/production-requests/{{ item.request_id }}">Review</a></td>
+</tr>{% endfor %}</tbody>
+</table>
+{% else %}<div class="empty">No matching production requests.</div>{% endif %}
+</section>
+{% endblock %}

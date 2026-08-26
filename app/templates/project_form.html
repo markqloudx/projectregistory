@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading compact">
+  <div><p class="eyebrow">Project identity</p><h1>{{ "Edit project" if project else "Register a project" }}</h1>
+  <p>Repository and deployment settings are intentionally not required during registration.</p></div>
+</div>
+<form id="project-form" class="panel form-grid" data-project-id="{{ project.project_id if project else '' }}">
+  <label class="field span-2">Project name<span>*</span><input name="name" required maxlength="200" value="{{ project.name if project else '' }}"></label>
+  <label class="field">Team<span>*</span>
+    <select name="team_name" required>
+      <option value="">Select a team</option>
+      {% for team in settings.teams %}<option value="{{ team }}" {% if project and project.team_name == team %}selected{% endif %}>{{ team }}</option>{% endfor %}
+      {% if project and project.team_name not in settings.teams %}<option selected value="{{ project.team_name }}">{{ project.team_name }}</option>{% endif %}
+    </select>
+  </label>
+  <label class="field">Data classification<span>*</span>
+    <select name="data_classification" required>
+      <option value="">Select classification</option>
+      {% for item in settings.data_classifications %}<option value="{{ item }}" {% if project and project.data_classification == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field">Technical owner<span>*</span><input type="email" name="technical_owner_email" required value="{{ project.technical_owner_email if project else actor.subject }}"></label>
+  <label class="field">Business owner<span>*</span><input type="email" name="business_owner_email" required value="{{ project.business_owner_email if project else '' }}"></label>
+  <label class="field span-2">Description<textarea name="description" rows="3">{{ project.description if project else '' }}</textarea></label>
+  <label class="field">Planned go-live date<input type="date" name="go_live_date" value="{{ project.go_live_date if project and project.go_live_date else '' }}"></label>
+  <label class="field">Jira / change link<input type="url" name="jira_link" placeholder="https://..." value="{{ project.jira_link if project else '' }}"></label>
+  <label class="field span-2">Documentation link<input type="url" name="documentation_link" placeholder="https://..." value="{{ project.documentation_link if project else '' }}"></label>
+  <label class="field span-2">Data sources<textarea name="data_sources" rows="3" placeholder="Describe upstream sources and shared dependencies">{{ project.data_sources if project else '' }}</textarea></label>
+  <label class="field span-2">Technical details<textarea name="technical_details" rows="4" placeholder="Architecture, schedules, support details, or other notes">{{ project.technical_details if project else '' }}</textarea></label>
+  <div class="form-actions span-2">
+    <a class="button secondary" href="{{ '/projects/' ~ project.project_id if project else '/projects' }}">Cancel</a>
+    <button class="button primary" type="submit">{{ "Save changes" if project else "Register and get project ID" }}</button>
+  </div>
+</form>
+{% endblock %}

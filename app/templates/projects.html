@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">Registry</p><h1>Projects</h1><p>Projects you own, maintain, or administer.</p></div>
+  <a class="button primary" href="/projects/new">Register project</a>
+</div>
+<section class="panel table-panel">
+{% if projects %}
+<table>
+  <thead><tr><th>Project</th><th>Team</th><th>Technical owner</th><th>Classification</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for project in projects %}
+  <tr>
+    <td><strong>{{ project.name }}</strong><small class="block">{{ project.project_id }}</small></td>
+    <td>{{ project.team_name }}</td>
+    <td>{{ project.technical_owner_email }}</td>
+    <td>{{ project.data_classification }}</td>
+    <td><span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span></td>
+    <td><a href="/projects/{{ project.project_id }}">Open</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">No projects found.</div>{% endif %}
+</section>
+{% endblock %}

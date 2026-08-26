@@ -1,0 +1,31 @@
+command:
+  - uvicorn
+  - app.main:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+  - --workers
+  - "1"
+
+env:
+  - name: APP_CONFIG_PATH
+    value: config/app_config.yaml
+  - name: REGISTRY_BACKEND
+    value: databricks
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: REGISTRY_DATABRICKS_HOST
+    value: https://dbc-ee468813-8a08.cloud.databricks.com
+  - name: REGISTRY_CATALOG
+    value: it_prod
+  - name: REGISTRY_SCHEMA
+    value: project_registry
+  - name: DEV_DATABRICKS_HOST
+    value: https://dbc-9c07a238-9e1e.cloud.databricks.com
+  - name: PROD_DATABRICKS_HOST
+    value: https://dbc-eadde54f-6391.cloud.databricks.com
+  - name: DEV_PROJECT_CATALOG
+    value: foundry_dev
+  - name: PROD_PROJECT_CATALOG
+    value: foundry_prod

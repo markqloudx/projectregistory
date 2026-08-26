@@ -1,0 +1,61 @@
+bundle:
+  databricks_cli_version: ">= 1.0.0"
+  name: project-registry-governance
+
+variables:
+  app_name:
+    default: project-registry-governance
+  sql_warehouse_id:
+    description: Existing it-prod SQL warehouse used by the registry App
+  app_users_group:
+    description: Group with CAN_USE on the App
+  app_managers_group:
+    description: Group with CAN_MANAGE on the App
+  dev_validator_service_principal:
+    description: Application ID of the protected development validator
+  prod_deployer_service_principal:
+    description: Application ID of the protected production deployer
+
+sync:
+  exclude:
+    - .git/**
+    - .pytest_cache/**
+    - __pycache__/**
+    - tests/**
+    - deployment/**
+    - sql/**
+    - docs/**
+    - dist/**
+    - "*.zip"
+
+resources:
+  apps:
+    project_registry:
+      name: ${var.app_name}
+      description: Simplified project registry, tag gate, and production approval App v4.0.0
+      source_code_path: .
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.sql_warehouse_id}
+            permission: CAN_USE
+      permissions:
+        - group_name: ${var.app_users_group}
+          level: CAN_USE
+        - group_name: ${var.app_managers_group}
+          level: CAN_MANAGE
+        - service_principal_name: ${var.dev_validator_service_principal}
+          level: CAN_USE
+        - service_principal_name: ${var.prod_deployer_service_principal}
+          level: CAN_USE
+
+targets:
+  prod:
+    mode: production
+    default: true
+    workspace:
+      host: https://dbc-ee468813-8a08.cloud.databricks.com
+      root_path: /Workspace/Users/vireddy1@silabs.com/.governance/apps/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: vireddy1@silabs.com
+        level: CAN_MANAGE

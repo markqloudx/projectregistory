@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Simple governance for Databricks projects</p>
+    <h1>Register once. Build in development. Request production when ready.</h1>
+    <p>The app checks project ownership and mandatory tags, records approval, and hands production work to the protected deployer.</p>
+  </div>
+  <a class="button primary" href="/projects/new">Register a project</a>
+</section>
+
+<section class="metrics" aria-label="Registry summary">
+  <article><span>{{ summary.projects or 0 }}</span><small>Projects</small></article>
+  <article><span>{{ summary.ready_for_approval or 0 }}</span><small>Ready for approval</small></article>
+  <article><span>{{ summary.queued_or_deploying or 0 }}</span><small>Queued</small></article>
+  <article><span>{{ summary.deployed or 0 }}</span><small>Deployed</small></article>
+  <article><span>{{ summary.failed or 0 }}</span><small>Failed</small></article>
+</section>
+
+<div class="two-column">
+  <section class="panel">
+    <div class="panel-heading"><h2>My projects</h2><a href="/projects">View all</a></div>
+    {% if projects %}
+      <div class="list">
+      {% for project in projects %}
+        <a class="list-row" href="/projects/{{ project.project_id }}">
+          <span><strong>{{ project.name }}</strong><small>{{ project.project_id }} · {{ project.team_name }}</small></span>
+          <span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span>
+        </a>
+      {% endfor %}
+      </div>
+    {% else %}<div class="empty">No projects yet. Register the first project to receive a project ID.</div>{% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><h2>Recent production requests</h2><a href="/production-requests">View all</a></div>
+    {% if production_requests %}
+      <div class="list">
+      {% for item in production_requests %}
+        <a class="list-row" href="/production-requests/{{ item.request_id }}">
+          <span><strong>{{ item.project_name or item.project_id }}</strong><small>{{ item.request_id }}</small></span>
+          <span class="badge status-{{ item.request_status|lower|replace('_','-') }}">{{ item.request_status|replace('_',' ') }}</span>
+        </a>
+      {% endfor %}
+      </div>
+    {% else %}<div class="empty">No production requests are visible to you.</div>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading compact"><div><p class="eyebrow">{{ project.project_id }}</p><h1>Request production</h1><p>Select current development assets, then identify the Git branch and Bundle that will deploy them.</p></div></div>
+<form id="production-request-form" class="stack" data-project-id="{{ project.project_id }}">
+  <section class="panel">
+    <div class="step-title"><span>1</span><div><h2>Select development assets</h2><p>Only compliant assets can enter the approval queue.</p></div><button type="button" id="request-scan-assets" class="button secondary" data-project-id="{{ project.project_id }}">Refresh scan</button></div>
+    <div id="asset-picker" class="asset-picker"><div class="empty compact">Loading development assets…</div></div>
+    <details class="manual-asset"><summary>Add an asset that was not discovered</summary>
+      <div class="form-grid narrow">
+        <label class="field">Type<select id="manual-type"><option>job</option><option>pipeline</option><option>dashboard</option><option>app</option><option>notebook</option><option>schema</option><option>table</option><option>view</option><option>volume</option></select></label>
+        <label class="field">Asset name<input id="manual-name"></label>
+        <label class="field">Databricks resource ID<input id="manual-id"></label>
+        <label class="field">Workspace path<input id="manual-path"></label>
+        <label class="field">Catalog<input id="manual-catalog" value="{{ settings.dev_catalog }}"></label>
+        <label class="field">Schema<input id="manual-schema"></label>
+        <button type="button" id="manual-add" class="button secondary">Add and validate</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="step-title"><span>2</span><div><h2>Source control and Bundle</h2><p>A SHA is not requested or approved. The worker records the revision it actually deploys for audit.</p></div></div>
+    <div class="form-grid">
+      <label class="field span-2">Git repository<span>*</span><input type="url" name="repository_uri" required placeholder="https://github.com/organization/repository" value="{{ delivery.repository_uri or '' }}"></label>
+      <label class="field">Branch<span>*</span><input name="git_branch" required value="{{ delivery.git_branch or 'main' }}"></label>
+      <label class="field">Bundle path<span>*</span><input name="bundle_path" required value="{{ delivery.bundle_path or '.' }}"></label>
+      <label class="field">Development target<input name="dev_target" value="{{ delivery.dev_target or 'dev' }}"></label>
+      <label class="field">Production target<input name="prod_target" value="{{ delivery.prod_target or 'prod' }}"></label>
+      <label class="field span-2">Bundle resource to run after deployment<input name="run_resource_key" placeholder="Optional, e.g. customer_orders_job" value="{{ delivery.run_resource_key or '' }}"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="step-title"><span>3</span><div><h2>Change context</h2><p>Describe what will change so the approver can make an informed decision.</p></div></div>
+    <div class="form-grid">
+      <label class="field span-2">Change summary<textarea name="change_summary" rows="4"></textarea></label>
+      <label class="field span-2">Jira / change link<input type="url" name="jira_link" value="{{ project.jira_link }}"></label>
+    </div>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="/projects/{{ project.project_id }}">Cancel</a><button class="button primary" type="submit">Validate and submit request</button></div>
+</form>
+{% endblock %}

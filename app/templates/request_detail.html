@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">{{ request.request_id }}</p><h1>{{ project.name }}</h1><p>{{ request.change_summary or "No change summary provided." }}</p></div>
+  <span class="badge large status-{{ request.request_status|lower|replace('_','-') }}">{{ request.request_status|replace('_',' ') }}</span>
+</div>
+
+<div class="two-column uneven">
+<section class="panel"><h2>Request summary</h2><dl>
+  <div><dt>Project ID</dt><dd>{{ project.project_id }}</dd></div>
+  <div><dt>Team</dt><dd>{{ project.team_name }}</dd></div>
+  <div><dt>Classification</dt><dd>{{ project.data_classification }}</dd></div>
+  <div><dt>Requested by</dt><dd>{{ request.requested_by }}</dd></div>
+  <div><dt>Approved by</dt><dd>{{ request.approved_by or "Not decided" }}</dd></div>
+  <div><dt>Repository</dt><dd>{{ request.repository_uri }}</dd></div>
+  <div><dt>Branch</dt><dd>{{ request.git_branch }}</dd></div>
+  <div><dt>Bundle</dt><dd>{{ request.bundle_path }} · {{ request.prod_target }}</dd></div>
+  <div><dt>Deployer profile</dt><dd>{{ request.deployer_profile }}</dd></div>
+  <div><dt>Source validated revision</dt><dd><code>{{ request.source_validated_revision or "Pending validation" }}</code></dd></div>
+  <div><dt>Deployed revision</dt><dd><code>{{ request.resolved_git_revision or "Recorded after deployment" }}</code></dd></div>
+</dl></section>
+<section class="panel"><h2>Gate status</h2>
+  <div class="gate {{ 'pass' if request.dev_tag_check_passed else 'fail' }}"><strong>Development tags</strong><span>{{ "Passed" if request.dev_tag_check_passed else "Action required" }}</span><p>{{ request.dev_tag_check_detail }}</p></div>
+  <div class="gate {{ 'pass' if request.source_preflight_passed else ('fail' if request.source_preflight_passed is not none else '') }}"><strong>Git and Bundle preflight</strong><span>{{ "Passed" if request.source_preflight_passed else ("Failed" if request.source_preflight_passed is not none else request.source_preflight_status|replace('_',' ')|title) }}</span><p>{{ request.source_preflight_detail or "The protected development validator checks the current branch and Bundle targets." }}</p></div>
+  <div class="gate {{ 'pass' if request.prod_tag_check_passed else ('fail' if request.prod_tag_check_passed is not none else '') }}"><strong>Production tags</strong><span>{{ "Passed" if request.prod_tag_check_passed else ("Failed" if request.prod_tag_check_passed is not none else "Pending") }}</span><p>{{ request.prod_tag_check_detail or "Verified by the protected production worker after deployment." }}</p></div>
+  {% if request.deployment_message %}<div class="notice">{{ request.deployment_message }}</div>{% endif %}
+  {% if request.deployment_run_url %}<a class="button secondary" href="{{ request.deployment_run_url }}" target="_blank" rel="noreferrer">Open deployment run</a>{% endif %}
+</section>
+</div>
+
+<section class="panel"><div class="panel-heading"><h2>Selected assets</h2><span>{{ request.asset_manifest|length }} assets</span></div>
+<div class="asset-list">{% for asset in request.asset_manifest %}<div><span class="asset-type">{{ asset.resource_type }}</span><strong>{{ asset.resource_name }}</strong><small>{{ asset.resource_path or asset.resource_id or (asset.catalog_name ~ '.' ~ asset.schema_name) }}</small></div>{% endfor %}</div>
+</section>
+
+{% if is_approver and request.request_status == 'READY_FOR_APPROVAL' %}
+<section class="panel decision-panel"><h2>Governance decision</h2><p>Approval performs one more in-place development tag check, then queues the protected production deployer.</p>
+<label class="field">Decision comment<textarea id="decision-comment" rows="3"></textarea></label>
+<div class="button-row"><button class="button danger decision-button" data-request-id="{{ request.request_id }}" data-approve="false">Reject</button><button class="button primary decision-button" data-request-id="{{ request.request_id }}" data-approve="true">Approve and deploy</button></div>
+</section>
+{% elif is_approver and request.request_status == 'DEPLOY_FAILED' %}
+<section class="panel decision-panel"><h2>Deployment failed</h2><p>Retry performs a fresh development tag check before placing the request back in the queue.</p><button class="button primary" id="retry-request" data-request-id="{{ request.request_id }}">Retry deployment</button></section>
+{% elif request.request_status == 'VALIDATING' %}
+<section class="panel decision-panel"><h2>Source validation in progress</h2><p>The protected validator is checking the current Git branch, mandatory source tags, workspace/catalog route, and both Bundle targets. Default Bundle development prefixes are allowed.</p></section>
+{% elif request.request_status == 'ACTION_REQUIRED' %}
+<section class="panel decision-panel"><h2>Action required</h2><p>Correct the reported development tag or Git/Bundle issue, then validate again.</p><button class="button primary" id="revalidate-request" data-request-id="{{ request.request_id }}">Revalidate request</button></section>
+{% endif %}
+
+{% if is_admin and request.request_status in ['VALIDATING', 'DEPLOYING'] %}
+<section class="panel decision-panel"><h2>Administrative recovery</h2><p>Use only after confirming the protected worker has stopped. Validation is requeued; an interrupted production deployment is marked failed and must use the normal Retry action.</p>
+<label class="field">Recovery reason<textarea id="recovery-comment" rows="3" placeholder="Describe the stopped worker and investigation performed."></textarea></label>
+<button class="button danger" id="recover-request" data-request-id="{{ request.request_id }}">Recover stalled request</button></section>
+{% endif %}
+
+<section class="panel"><div class="panel-heading"><h2>Tag evidence</h2><span>{{ tag_evidence|length }} checks</span></div>
+{% if tag_evidence %}<div class="table-scroll"><table><thead><tr><th>Environment</th><th>Asset</th><th>Tag</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead><tbody>{% for row in tag_evidence %}<tr><td>{{ row.environment }}</td><td>{{ row.resource_type }} · {{ row.resource_name }}</td><td><code>{{ row.tag_key }}</code></td><td>{{ row.expected_value }}</td><td>{{ row.actual_value or "—" }}</td><td><span class="badge result-{{ row.validation_result|lower }}">{{ row.validation_result }}</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty">No evidence has been recorded.</div>{% endif %}
+</section>
+{% endblock %}
