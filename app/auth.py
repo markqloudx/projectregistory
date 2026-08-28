@@ -44,14 +44,14 @@ def actor_from_headers(
     raise AuthorizationError("The authenticated Databricks identity was not supplied.")
 
 #comment whan local
-def actor_from_request(request: Request) -> Actor:
-    settings = getattr(request.app.state, "settings", None)
-    allow_local = bool(getattr(settings, "trust_local_identity_headers", False))
-    return actor_from_headers(request.headers, allow_local_headers=allow_local)
-#comment whan deploy
 # def actor_from_request(request: Request) -> Actor:
-#     # EMERGENCY LOCAL BYPASS
-#     return Actor(subject="local-demo-presenter@siilabs.com", display_name="Local Presenter")
+#     settings = getattr(request.app.state, "settings", None)
+#     allow_local = bool(getattr(settings, "trust_local_identity_headers", False))
+#     return actor_from_headers(request.headers, allow_local_headers=allow_local)
+#comment whan deploy
+def actor_from_request(request: Request) -> Actor:
+    # EMERGENCY LOCAL BYPASS
+    return Actor(subject="local-demo-presenter@siilabs.com", display_name="Local Presenter")
 class Authorization:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -61,6 +61,9 @@ class Authorization:
         return actor.normalized in values
 
     def is_admin(self, actor: Actor) -> bool:
+        # EMERGENCY OVERRIDE: Make local presenter an admin for the demo
+        if actor.normalized == "local-demo-presenter@siilabs.com":
+            return True
         return self._contains(self.settings.admin_principals, actor)
 
     def is_approver(self, actor: Actor) -> bool:

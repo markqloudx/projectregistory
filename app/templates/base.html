@@ -7,29 +7,74 @@
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-mark">PR</span>
-      <span><strong>Project Registry</strong><small>Governance v{{ version }}</small></span>
-    </a>
-    <nav aria-label="Primary navigation">
-      <a href="/projects">My projects</a>
-      <a href="/production-requests">Production requests</a>
-      {% if is_approver %}<a href="/approvals">Approval queue</a>{% endif %}
-      {% if is_auditor %}<a href="/audit">Audit</a>{% endif %}
-      <a href="/help">Help</a>
-    </nav>
-    <div class="identity" title="Authenticated Databricks identity">{{ actor.subject }}</div>
-  </header>
-  <main class="page-shell">
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    {% block content %}{% endblock %}
-  </main>
-  <footer>
-    <span>{{ settings.dev_workspace_name }} / {{ settings.dev_catalog }}</span>
-    <span aria-hidden="true">→</span>
-    <span>{{ settings.prod_workspace_name }} / {{ settings.prod_catalog }}</span>
-  </footer>
+  <div class="app-shell">
+
+    <!-- ============================= LEFT MENU ============================= -->
+    <aside class="sidebar" id="primary-nav">
+      <a class="brand" href="/">
+        <span class="brand-mark">PR</span>
+        <span><strong>Project Registry</strong><small>Governance v{{ version }}</small></span>
+      </a>
+
+      <nav aria-label="Primary navigation">
+        <p class="nav-section-label">Workspace</p>
+        <a href="/" data-label="Dashboard"><span class="nav-icon">DB</span><span class="nav-text">Dashboard</span></a>
+        <a href="/projects" data-label="My projects"><span class="nav-icon">MP</span><span class="nav-text">My projects</span></a>
+        <a href="/production-requests" data-label="Production requests"><span class="nav-icon">PR</span><span class="nav-text">Production requests</span></a>
+
+        {% if is_approver or is_auditor %}
+        <p class="nav-section-label">Governance</p>
+        {% if is_approver %}<a href="/approvals" data-label="Approval queue"><span class="nav-icon">AQ</span><span class="nav-text">Approval queue</span></a>{% endif %}
+        {% if is_auditor %}<a href="/audit" data-label="Audit"><span class="nav-icon">AU</span><span class="nav-text">Audit</span></a>{% endif %}
+        {% endif %}
+
+        <p class="nav-section-label">Support</p>
+        <a href="/help" data-label="Help"><span class="nav-icon">HE</span><span class="nav-text">Help</span></a>
+
+        <!--
+          Add more items the same way — the sidebar scrolls if the list
+          grows taller than the screen. Give each link a two-letter
+          <span class="nav-icon"> and a data-label (used as the tooltip
+          when the sidebar is collapsed to its icon rail):
+
+          <a href="/your-route" data-label="Your label"><span class="nav-icon">YR</span><span class="nav-text">Your label</span></a>
+
+          Group related links under a new section by adding another
+          <p class="nav-section-label">Label</p> divider above them.
+        -->
+      </nav>
+    </aside>
+
+    <!-- Dimmed backdrop, shown only while the mobile drawer is open -->
+    <div class="nav-scrim"></div>
+
+    <!-- ============================= MAIN AREA ============================= -->
+    <div class="content-area">
+      <header class="topbar">
+        <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-controls="primary-nav" aria-expanded="false">
+          <span></span>
+        </button>
+        <span class="topbar-title">{{ title }}</span>
+        <div class="identity" title="Authenticated Databricks identity">
+          <span class="identity-avatar">{{ (actor.subject or "?")[0] | upper }}</span>
+          <span class="identity-name">{{ actor.subject }}</span>
+        </div>
+      </header>
+
+      <main class="page-shell">
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="content-footer">
+        <span>{{ settings.dev_workspace_name }} / {{ settings.dev_catalog }}</span>
+        <span aria-hidden="true">→</span>
+        <span>{{ settings.prod_workspace_name }} / {{ settings.prod_catalog }}</span>
+      </footer>
+    </div>
+
+  </div>
+
   <script src="/static/app.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>

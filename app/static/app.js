@@ -169,4 +169,29 @@
       window.location.reload();
     } catch (error) { toast(error.message, true); }
   }));
+
+  /* ---------------------------------------------------------------------
+     Responsive nav toggle (mobile menu) — additive only, does not touch
+     any existing behavior above.
+  --------------------------------------------------------------------- */
+  const navToggle = $('.nav-toggle');
+  const primaryNav = $('nav[aria-label="Primary navigation"]');
+  if (navToggle && primaryNav) {
+    navToggle.addEventListener('click', () => {
+      const isOpen = primaryNav.classList.toggle('open');
+      navToggle.setAttribute('aria-expanded', String(isOpen));
+    });
+    primaryNav.addEventListener('click', (event) => {
+      if (event.target.tagName === 'A') {
+        primaryNav.classList.remove('open');
+        navToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 900) {
+        primaryNav.classList.remove('open');
+        navToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
 })();
