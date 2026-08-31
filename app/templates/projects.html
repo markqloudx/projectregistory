@@ -1,26 +1,682 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-heading">
-  <div><p class="eyebrow">Registry</p><h1>Projects</h1><p>Projects you own, maintain, or administer.</p></div>
+  <div>
+    <p class="eyebrow">Registry</p>
+    <h1>Projects</h1>
+    <p>Projects you own, maintain, or administer.</p>
+  </div>
   <a class="button primary" href="/projects/new">Register project</a>
 </div>
-<section class="panel table-panel">
-{% if projects %}
-<table>
-  <thead><tr><th>Project</th><th>Team</th><th>Technical owner</th><th>Classification</th><th>Status</th><th></th></tr></thead>
-  <tbody>
-  {% for project in projects %}
-  <tr>
-    <td><strong>{{ project.name }}</strong><small class="block">{{ project.project_id }}</small></td>
-    <td>{{ project.team_name }}</td>
-    <td>{{ project.technical_owner_email }}</td>
-    <td>{{ project.data_classification }}</td>
-    <td><span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span></td>
-    <td><a href="/projects/{{ project.project_id }}">Open</a></td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}<div class="empty">No projects found.</div>{% endif %}
+
+<!-- ========== FILTER BAR ========== -->
+<div class="filter-bar">
+  <div class="filter-group">
+    <div class="filter-item">
+      <label for="filter-team">Team</label>
+      <select id="filter-team">
+        <option value="">All Teams</option>
+        {% for team in settings.teams %}
+          <option value="{{ team }}">{{ team }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="filter-status">Status</label>
+      <select id="filter-status">
+        <option value="">All Status</option>
+        <option value="ACTIVE">Active</option>
+        <option value="SUSPENDED">Suspended</option>
+        <option value="ARCHIVED">Archived</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="filter-classification">Classification</label>
+      <select id="filter-classification">
+        <option value="">All Classifications</option>
+        {% for item in settings.data_classifications %}
+          <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-item search-item">
+      <label for="filter-search">Search</label>
+      <input type="text" id="filter-search" placeholder="Search projects..." class="search-input">
+    </div>
+  </div>
+  <div class="filter-actions">
+    <button class="button secondary small" id="clear-filters">Clear Filters</button>
+    <span class="filter-count" id="filter-count"></span>
+  </div>
+</div>
+
+<!-- ========== PROJECTS TABLE ========== -->
+<section class="panel table-panel" style="padding: 0; overflow: hidden;">
+  <div class="table-responsive" style="overflow-x: auto;">
+    <table id="projects-table" class="generic-table">
+      <thead>
+        <tr>
+          <th data-sort="name" class="sortable">Project <span class="sort-icon">↕</span></th>
+          <th data-sort="team" class="sortable">Team <span class="sort-icon">↕</span></th>
+          <th data-sort="owner">Technical Owner</th>
+          <th data-sort="classification" class="sortable">Classification <span class="sort-icon">↕</span></th>
+          <th data-sort="status" class="sortable">Status <span class="sort-icon">↕</span></th>
+          <th data-sort="created" class="sortable">Created <span class="sort-icon">↕</span></th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for project in projects %}
+        <tr>
+          <td data-sort="name">
+            <strong>{{ project.name }}</strong>
+            <span class="block">{{ project.project_id }}</span>
+          </td>
+          <td data-filter="team" data-sort="team">{{ project.team_name }}</td>
+          <td data-sort="owner">{{ project.technical_owner_email }}</td>
+          <td data-filter="classification" data-sort="classification">{{ project.data_classification }}</td>
+          <td data-filter="status" data-sort="status">
+            <span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span>
+          </td>
+          <td data-sort="created">
+            <span class="sub-text">{{ project.created_at.split('T')[0] if project.created_at else '' }}</span>
+          </td>
+          <td class="actions-col">
+            <a class="action-link" href="/projects/{{ project.project_id }}">Open</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- ========== PAGINATION ========== -->
+  <div class="pagination" id="pagination-container">
+    <div class="pagination-info" id="pagination-info">Showing 0 to 0 of 0 records</div>
+    <div class="pagination-controls" id="pagination-controls"></div>
+  </div>
 </section>
+
+<style>
+  /* ================================================================
+     TABLE STYLES - Matches your existing design
+     ================================================================ */
+  
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  
+  .filter-bar .filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    flex: 1;
+  }
+  
+  .filter-bar .filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+  }
+  
+  .filter-bar .filter-item label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .filter-bar .filter-item select,
+  .filter-bar .filter-item input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #ffffff;
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+    min-width: 140px;
+  }
+  
+  .filter-bar .filter-item select:focus,
+  .filter-bar .filter-item input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  
+  .filter-bar .search-item {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .filter-bar .search-item input {
+    width: 100%;
+  }
+  
+  .filter-bar .filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  
+  .filter-bar .filter-count {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  /* ---------- TABLE ---------- */
+  .table-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  
+  .table-panel table thead {
+    background: var(--surface-muted);
+    border-bottom: 2px solid var(--border);
+  }
+  
+  .table-panel table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    background: var(--surface-muted);
+    z-index: 10;
+    cursor: default;
+  }
+  
+  .table-panel table thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  
+  .table-panel table thead th.sortable:hover {
+    color: var(--accent);
+  }
+  
+  .table-panel table thead th .sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    opacity: 0.4;
+    font-size: 0.7rem;
+    transition: opacity 0.15s ease;
+  }
+  
+  .table-panel table thead th.sortable:hover .sort-icon {
+    opacity: 0.8;
+  }
+  
+  .table-panel table thead th.sorted-asc .sort-icon {
+    opacity: 1;
+  }
+  
+  .table-panel table thead th.sorted-desc .sort-icon {
+    opacity: 1;
+    transform: rotate(180deg);
+  }
+  
+  .table-panel table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+  }
+  
+  .table-panel table tbody tr:hover {
+    background: var(--surface-muted);
+  }
+  
+  .table-panel table tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  .table-panel table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    color: var(--text);
+  }
+  
+  .table-panel table tbody td .block {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  
+  .table-panel table tbody td .sub-text {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  
+  /* ---------- ACTION BUTTONS ---------- */
+  .table-panel .actions-col {
+    text-align: right;
+    white-space: nowrap;
+  }
+  
+  .table-panel .action-link {
+    display: inline-block;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+  }
+  
+  .table-panel .action-link:hover {
+    background: var(--accent-soft);
+    text-decoration: underline;
+  }
+  
+  /* ---------- PAGINATION ---------- */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+  
+  .pagination .pagination-info {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  
+  .pagination .pagination-controls {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .pagination .pagination-controls button {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  
+  .pagination .pagination-controls button:hover:not(:disabled) {
+    background: var(--surface-muted);
+    border-color: #b0b8c0;
+  }
+  
+  .pagination .pagination-controls button.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+  
+  .pagination .pagination-controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  
+  .pagination .pagination-controls button .page-dots {
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  
+  /* ---------- EMPTY STATE ---------- */
+  .table-panel .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+  
+  .table-panel .empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  .table-panel .empty-state .empty-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  
+  .table-panel .empty-state .empty-subtitle {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 768px) {
+    .filter-bar {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px;
+    }
+    
+    .filter-bar .filter-group {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .filter-bar .filter-item {
+      min-width: auto;
+    }
+    
+    .filter-bar .filter-actions {
+      justify-content: space-between;
+    }
+    
+    .pagination {
+      flex-direction: column;
+      gap: 12px;
+      align-items: stretch;
+      text-align: center;
+    }
+    
+    .pagination .pagination-controls {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+
+<!-- ============================================================
+     TABLE JAVASCRIPT - Sorting, Filtering, Pagination
+     ============================================================ -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    const table = document.getElementById('projects-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationControls = document.getElementById('pagination-controls');
+    const filterCount = document.getElementById('filter-count');
+    
+    let filteredRows = [...rows];
+    let currentPage = 1;
+    const itemsPerPage = 15;
+    let currentSort = { field: null, direction: 'asc' };
+    let filters = {};
+    
+    // ============================================================
+    // Render Table
+    // ============================================================
+    function render() {
+      // Apply filters
+      let filtered = [...rows];
+      
+      Object.keys(filters).forEach(key => {
+        const value = filters[key].toLowerCase().trim();
+        
+        if (key === 'search') {
+          filtered = filtered.filter(row => {
+            const text = row.textContent.toLowerCase();
+            return text.includes(value);
+          });
+        } else {
+          filtered = filtered.filter(row => {
+            const cell = row.querySelector(`td[data-filter="${key}"]`);
+            if (!cell) return true;
+            const cellValue = cell.textContent.toLowerCase().trim();
+            return cellValue === value;
+          });
+        }
+      });
+      
+      // Apply sort
+      if (currentSort.field) {
+        const field = currentSort.field;
+        const direction = currentSort.direction === 'asc' ? 1 : -1;
+        
+        filtered.sort((a, b) => {
+          const aCell = a.querySelector(`td[data-sort="${field}"]`) || a.querySelector('td:first-child');
+          const bCell = b.querySelector(`td[data-sort="${field}"]`) || b.querySelector('td:first-child');
+          
+          let aVal = aCell ? aCell.textContent.trim() : '';
+          let bVal = bCell ? bCell.textContent.trim() : '';
+          
+          const aNum = parseFloat(aVal);
+          const bNum = parseFloat(bVal);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return (aNum - bNum) * direction;
+          }
+          
+          return aVal.localeCompare(bVal) * direction;
+        });
+      }
+      
+      filteredRows = filtered;
+      
+      // Pagination
+      const totalPages = Math.ceil(filtered.length / itemsPerPage);
+      if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+      
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = Math.min(start + itemsPerPage, filtered.length);
+      const pageRows = filtered.slice(start, end);
+      
+      // Update table
+      tbody.innerHTML = '';
+      if (pageRows.length === 0) {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        const colCount = table.querySelectorAll('thead th').length;
+        emptyCell.colSpan = colCount;
+        emptyCell.className = 'empty-state';
+        emptyCell.innerHTML = `
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">No records found</div>
+          <div class="empty-subtitle">Try adjusting your filters</div>
+        `;
+        emptyRow.appendChild(emptyCell);
+        tbody.appendChild(emptyRow);
+      } else {
+        pageRows.forEach(row => {
+          tbody.appendChild(row.cloneNode(true));
+        });
+      }
+      
+      // Update filter count
+      if (filterCount) {
+        if (filtered.length !== rows.length) {
+          filterCount.textContent = `Showing ${filtered.length} of ${rows.length}`;
+          filterCount.style.display = 'inline';
+        } else {
+          filterCount.textContent = '';
+          filterCount.style.display = 'none';
+        }
+      }
+      
+      // Update pagination
+      renderPagination(totalPages, filtered.length);
+    }
+    
+    // ============================================================
+    // Pagination
+    // ============================================================
+    function renderPagination(totalPages, totalRecords) {
+      if (totalPages <= 1) {
+        paginationControls.innerHTML = '';
+        paginationInfo.textContent = `Showing all ${totalRecords} records`;
+        return;
+      }
+      
+      const current = currentPage;
+      const start = (current - 1) * itemsPerPage + 1;
+      const end = Math.min(current * itemsPerPage, totalRecords);
+      
+      paginationInfo.textContent = `Showing ${start} to ${end} of ${totalRecords} records`;
+      
+      let html = `
+        <button class="page-prev" ${current === 1 ? 'disabled' : ''}>‹</button>
+      `;
+      
+      const maxVisible = 5;
+      let startPage = Math.max(1, current - Math.floor(maxVisible / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      
+      if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+      
+      if (startPage > 1) {
+        html += `<button data-page="1">1</button>`;
+        if (startPage > 2) {
+          html += `<button disabled><span class="page-dots">…</span></button>`;
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button data-page="${i}" class="${i === current ? 'active' : ''}">${i}</button>`;
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          html += `<button disabled><span class="page-dots">…</span></button>`;
+        }
+        html += `<button data-page="${totalPages}">${totalPages}</button>`;
+      }
+      
+      html += `
+        <button class="page-next" ${current === totalPages ? 'disabled' : ''}>›</button>
+      `;
+      
+      paginationControls.innerHTML = html;
+      
+      // Events
+      paginationControls.querySelectorAll('[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentPage = parseInt(btn.dataset.page);
+          render();
+        });
+      });
+      
+      paginationControls.querySelector('.page-prev')?.addEventListener('click', () => {
+        if (current > 1) {
+          currentPage--;
+          render();
+        }
+      });
+      
+      paginationControls.querySelector('.page-next')?.addEventListener('click', () => {
+        if (current < totalPages) {
+          currentPage++;
+          render();
+        }
+      });
+    }
+    
+    // ============================================================
+    // Sorting
+    // ============================================================
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        if (currentSort.field === field) {
+          currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSort.field = field;
+          currentSort.direction = 'asc';
+        }
+        
+        document.querySelectorAll('th.sortable').forEach(h => {
+          h.classList.remove('sorted-asc', 'sorted-desc');
+        });
+        th.classList.add(`sorted-${currentSort.direction}`);
+        
+        render();
+      });
+    });
+    
+    // ============================================================
+    // Filters
+    // ============================================================
+    document.querySelectorAll('.filter-bar select').forEach(select => {
+      select.addEventListener('change', () => {
+        const field = select.id.replace('filter-', '');
+        const value = select.value;
+        if (value) {
+          filters[field] = value;
+        } else {
+          delete filters[field];
+        }
+        currentPage = 1;
+        render();
+      });
+    });
+    
+    // Search
+    const searchInput = document.getElementById('filter-search');
+    if (searchInput) {
+      let timeout;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          const value = searchInput.value.toLowerCase().trim();
+          if (value) {
+            filters['search'] = value;
+          } else {
+            delete filters['search'];
+          }
+          currentPage = 1;
+          render();
+        }, 300);
+      });
+    }
+    
+    // Clear filters
+    document.getElementById('clear-filters')?.addEventListener('click', () => {
+      document.querySelectorAll('.filter-bar select').forEach(s => s.value = '');
+      if (searchInput) searchInput.value = '';
+      filters = {};
+      currentPage = 1;
+      render();
+    });
+    
+    // Initial render
+    render();
+    
+  });
+</script>
 {% endblock %}

@@ -32,6 +32,10 @@ PROJECT_COLUMNS = (
     "jira_link",
     "business_owner_email",
     "decision_comment",
+      # ========== TERMS AND CONDITIONS - ADD THESE 3 LINES ==========
+    "terms_accepted_at",
+    "terms_accepted_by",
+    "terms_version"
 )
 
 REQUEST_JSON_COLUMNS = {"asset_manifest_json": "asset_manifest"}
@@ -491,6 +495,10 @@ class DatabricksSqlDatabase:
               jira_link STRING,
               business_owner_email STRING NOT NULL,
               decision_comment STRING
+                -- ========== TERMS AND CONDITIONS - ADD THESE 3 LINES ==========
+              terms_accepted_at TIMESTAMP,
+              terms_accepted_by STRING,
+              terms_version STRING
             ) USING DELTA
             """,
             f"""

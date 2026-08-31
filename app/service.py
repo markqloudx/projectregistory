@@ -122,6 +122,20 @@ class RegistryService:
 
     # Projects -----------------------------------------------------------------
     def create_project(self, payload: ProjectCreate, actor: Actor) -> ProjectRecord:
+        # ========== TERMS AND CONDITIONS - Validate terms ==========
+        if not payload.terms_accepted:
+            raise ValidationError("Terms and conditions must be accepted")
+
+        # Get current terms version from settings
+        current_terms_version = self.settings.current_terms_version
+
+        # Verify terms version matches current version
+        if payload.terms_version != current_terms_version:
+            raise ValidationError(
+                f"Terms version mismatch. Required: {current_terms_version}, "
+                f"Provided: {payload.terms_version}"
+            )
+
         self._validate_project_options(payload.team_name, payload.data_classification)
         now = utc_now()
         record = {
@@ -144,6 +158,10 @@ class RegistryService:
             "jira_link": payload.jira_link,
             "business_owner_email": payload.business_owner_email,
             "decision_comment": "",
+            # ========== TERMS AND CONDITIONS - ADD THESE 3 LINES ==========
+            "terms_accepted_at": now,
+            "terms_accepted_by": actor.normalized,
+            "terms_version": current_terms_version,
         }
         project = self.database.create_project(record)
         self._audit(
@@ -157,6 +175,7 @@ class RegistryService:
                 "workspace": self.settings.workspace_route,
                 "dev_catalog": self.settings.dev_catalog,
                 "prod_catalog": self.settings.prod_catalog,
+                "terms_version": current_terms_version,
             },
         )
         return ProjectRecord.model_validate(project)
@@ -181,20 +200,112 @@ class RegistryService:
             raise ConflictError("Project is not available to this identity.")
         return ProjectRecord.model_validate(project)
 
-    def update_project(
-        self, project_id: str, payload: ProjectUpdate, actor: Actor
-    ) -> ProjectRecord:
+    # ========== TERMS AND CONDITIONS - GET PROJECT WITH TERMS STATUS ==========
+    def get_project_with_terms_status(self, project_id: str, actor: Actor) -> dict:
+        """Get project with terms status information for frontend"""
+        # Get the project
+        project = self.database.get_project(project_id)
+
+        # Check authorization
+        if actor is not None and not (
+            self.authorization.is_project_manager(project, actor)
+            or self.authorization.is_approver(actor)
+            or self.authorization.is_auditor(actor)
+        ):
+            raise ConflictError("Project is not available to this identity.")
+
+        # Convert to dict
+        if hasattr(project, 'model_dump'):
+            result = project.model_dump()
+        else:
+            result = dict(project)
+
+        # Get terms status
+        current_terms_version = self.settings.current_terms_version
+        terms_accepted_at = result.get("terms_accepted_at")
+        terms_accepted = terms_accepted_at is not None
+        terms_version = result.get("terms_version", "")
+        terms_up_to_date = terms_accepted and terms_version == current_terms_version
+
+        # Add terms status information
+        result["terms_accepted"] = terms_accepted
+        result["terms_up_to_date"] = terms_up_to_date
+        result["terms_version_current"] = current_terms_version
+        if not terms_version:
+            result["terms_version"] = current_terms_version
+
+        return result
+
+    def update_project(self, project_id: str, payload: ProjectUpdate, actor: Actor) -> ProjectRecord:
         current = self.database.get_project(project_id)
         self.authorization.require_project_manager(current, actor)
+
+        # Get all values from payload
         values = payload.model_dump(exclude_unset=True)
+        
+        # ========== TERMS AND CONDITIONS ==========
+        # Check if terms_accepted is in the payload
+        terms_accepted = values.get("terms_accepted")
+        if terms_accepted is not None:
+            if not terms_accepted:
+                raise ValidationError("Terms and conditions must be accepted")
+            
+            # Verify terms version
+            current_terms_version = self.settings.current_terms_version
+            provided_terms_version = values.get("terms_version")
+            if provided_terms_version != current_terms_version:
+                raise ValidationError(
+                    f"Terms version mismatch. Required: {current_terms_version}, "
+                    f"Provided: {provided_terms_version}"
+                )
+            
+            # Add terms fields to values for the UPDATE
+            now = utc_now()
+            values["terms_accepted_at"] = now
+            values["terms_accepted_by"] = actor.normalized
+            values["terms_version"] = current_terms_version
+            
+            # Audit terms re-acceptance
+            self._audit(
+                "TERMS_REACCEPTED",
+                actor,
+                project_id=project_id,
+                payload={
+                    "terms_version": current_terms_version,
+                    "previous_version": current.get("terms_version"),
+                },
+            )
+        
+        # Remove terms_accepted (not a database column)
+        values.pop("terms_accepted", None)
+        
+        # ========== FIX: Handle URL fields ==========
+        if "jira_link" in values:
+            jira_link = values.get("jira_link")
+            if jira_link and jira_link.upper() in ("NA", "N/A"):
+                values["jira_link"] = "NA"
+
+        if "documentation_link" in values:
+            doc_link = values.get("documentation_link")
+            if doc_link and doc_link.upper() in ("NA", "N/A"):
+                values["documentation_link"] = "NA"
+
+        # Validate project options
         self._validate_project_options(
             str(values.get("team_name") or current["team_name"]),
             str(values.get("data_classification") or current["data_classification"]),
         )
+
+        # If no values to update, return current
         if not values:
             return ProjectRecord.model_validate(current)
+
+        # Add updated_at and updated_by
         values.update({"updated_at": utc_now(), "updated_by": actor.normalized})
+        
+        # ========== FIX: Single UPDATE operation ==========
         updated = self.database.update_project(project_id, values)
+
         self._audit(
             "PROJECT_UPDATED",
             actor,

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} · Project Registry</title>
   <link rel="stylesheet" href="/static/app.css">
+  
+  <!-- ========== AG GRID CDN ========== -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.min.css">
 </head>
 <body>
   <div class="app-shell">
@@ -74,8 +78,9 @@
     </div>
 
   </div>
-
   <script src="/static/app.js" defer></script>
+  <!-- ========== AG GRID JAVASCRIPT ========== -->
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/dist/ag-grid-community.min.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

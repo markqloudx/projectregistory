@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -34,12 +35,41 @@ def _context(request: Request, **values: Any) -> dict[str, Any]:
     }
 
 
+def _serialize_project(project: Any) -> dict[str, Any]:
+    """Convert a project record to a JSON-serializable dict."""
+    # Get the data as dict
+    if hasattr(project, 'model_dump'):
+        data = project.model_dump()
+    else:
+        data = dict(project)
+    
+    # Convert datetime and date objects to ISO format strings
+    for key, value in data.items():
+        if isinstance(value, datetime):
+            data[key] = value.isoformat()
+        elif isinstance(value, date):
+            data[key] = value.isoformat()
+        elif isinstance(value, dict):
+            # Handle nested dicts if any
+            for k, v in value.items():
+                if isinstance(v, datetime):
+                    value[k] = v.isoformat()
+                elif isinstance(v, date):
+                    value[k] = v.isoformat()
+    
+    return data
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     service = _service(request)
     actor = actor_from_request(request)
     projects = service.list_projects(actor)
     requests = service.list_requests(actor)
+    
+    # Convert projects to serializable dicts
+    projects_data = [_serialize_project(p) for p in projects[:5]]
+    
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -47,7 +77,7 @@ def home(request: Request):
             request,
             title="Governance home",
             summary=service.dashboard(),
-            projects=projects[:5],
+            projects=projects_data,
             production_requests=requests[:8],
         ),
     )
@@ -57,19 +87,31 @@ def home(request: Request):
 def projects(request: Request):
     service = _service(request)
     actor = actor_from_request(request)
+    
+    # Convert projects to dict with datetime/date serialization
+    project_records = service.list_projects(actor)
+    projects_data = [_serialize_project(project) for project in project_records]
+    
     return templates.TemplateResponse(
         request,
         "projects.html",
-        _context(request, title="Projects", projects=service.list_projects(actor)),
+        _context(request, title="Projects", projects=projects_data),
     )
 
 
 @router.get("/projects/new", response_class=HTMLResponse)
 def project_new(request: Request):
+    service = _service(request)
+    # Set default terms values for new project
+    project_data = {
+        "terms_accepted": False,
+        "terms_up_to_date": False,
+        "terms_version": service.settings.current_terms_version
+    }
     return templates.TemplateResponse(
         request,
         "project_form.html",
-        _context(request, title="Register project", project=None),
+        _context(request, title="Register project", project=project_data),
     )
 
 
@@ -79,13 +121,17 @@ def project_detail(project_id: str, request: Request):
     actor = actor_from_request(request)
     project = service.get_project(project_id, actor)
     production_requests = service.list_requests(actor, project_id=project_id)
+    
+    # Convert project to serializable dict
+    project_data = _serialize_project(project)
+    
     return templates.TemplateResponse(
         request,
         "project_detail.html",
         _context(
             request,
             title=project.name,
-            project=project,
+            project=project_data,
             production_requests=production_requests,
             required_tags={
                 "project_tag": project.project_id,
@@ -100,12 +146,24 @@ def project_detail(project_id: str, request: Request):
 def project_edit(project_id: str, request: Request):
     service = _service(request)
     actor = actor_from_request(request)
-    project = service.get_project(project_id, actor)
-    service.authorization.require_project_manager(project.model_dump(), actor)
+    
+    # Get project with terms status
+    project_data = service.get_project_with_terms_status(project_id, actor)
+    
+    # Convert datetime/date objects to strings
+    project_data = _serialize_project(project_data)
+    
+    # Check authorization
+    service.authorization.require_project_manager(project_data, actor)
+    
     return templates.TemplateResponse(
         request,
         "project_form.html",
-        _context(request, title=f"Edit {project.name}", project=project),
+        _context(
+            request, 
+            title=f"Edit {project_data.get('name', project_id)}", 
+            project=project_data
+        ),
     )
 
 
@@ -167,6 +225,13 @@ def production_request_detail(request_id: str, request: Request):
     service = _service(request)
     actor = actor_from_request(request)
     detail = service.request_detail(request_id, actor)
+    
+    # Convert request and project to serializable dicts
+    if 'request' in detail:
+        detail['request'] = _serialize_project(detail['request'])
+    if 'project' in detail:
+        detail['project'] = _serialize_project(detail['project'])
+    
     return templates.TemplateResponse(
         request,
         "request_detail.html",

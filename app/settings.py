@@ -91,6 +91,8 @@ class Settings:
     request_expiry_hours: int
     backend: str
     deployment_profiles: tuple[DeploymentProfile, ...]
+    # ========== TERMS AND CONDITIONS - ADD THIS LINE ==========
+    current_terms_version: str
 
     @property
     def project_table(self) -> str:
@@ -153,6 +155,8 @@ def load_settings(path: str | Path | None = None) -> Settings:
     project_defaults = raw.get("project_defaults") or {}
     security = raw.get("security") or {}
     automation = raw.get("automation") or {}
+     # ========== TERMS AND CONDITIONS - ADD THIS LINE ==========
+    governance = raw.get("governance") or {}
 
     registry_host = _host(
         _env_or(registry.get("host"), "REGISTRY_DATABRICKS_HOST"),
@@ -301,4 +305,9 @@ def load_settings(path: str | Path | None = None) -> Settings:
         request_expiry_hours=int(automation.get("request_expiry_hours") or 72),
         backend=backend,
         deployment_profiles=tuple(profiles),
+        current_terms_version=_env_or(
+            governance.get("terms_version"),
+            "TERMS_VERSION",
+            "1.0.0"
+        ),
     )

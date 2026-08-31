@@ -34,6 +34,9 @@ def _optional_url(value: str | None, label: str) -> str:
     normalized = _text(value)
     if not normalized:
         return ""
+    # ========== FIX: Allow "NA" and "N/A" as valid values ==========
+    if normalized.upper() in ("NA", "N/A"):
+        return "NA"
     parsed = urlsplit(normalized)
     if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
         raise ValueError(f"{label} must be an HTTP(S) URL.")
@@ -54,6 +57,9 @@ class ProjectCreate(StrictModel):
     technical_details: str = ""
     jira_link: str = ""
     business_owner_email: str
+    # ========== TERMS AND CONDITIONS - ADD THESE 2 LINES ==========
+    terms_accepted: bool = Field(..., description="Must be True to accept terms")
+    terms_version: str = Field(..., description="Version of terms accepted")
 
     @field_validator("name", "team_name", "data_classification")
     @classmethod
@@ -78,6 +84,14 @@ class ProjectCreate(StrictModel):
     def project_url(cls, value: str, info: Any) -> str:
         return _optional_url(value, info.field_name)
 
+    # ========== TERMS AND CONDITIONS - ADD THIS VALIDATOR ==========
+    @field_validator("terms_accepted")
+    @classmethod
+    def validate_terms(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("You must accept the terms and conditions to proceed")
+        return value
+
 
 class ProjectUpdate(StrictModel):
     name: str | None = None
@@ -91,6 +105,9 @@ class ProjectUpdate(StrictModel):
     technical_details: str | None = None
     jira_link: str | None = None
     business_owner_email: str | None = None
+    # ========== TERMS AND CONDITIONS - ADD THESE 2 LINES ==========
+    terms_accepted: bool | None = Field(None, description="Must be True to accept terms")
+    terms_version: str | None = Field(None, description="Version of terms accepted")
 
     @field_validator("name", "team_name", "data_classification")
     @classmethod
@@ -117,6 +134,14 @@ class ProjectUpdate(StrictModel):
     def updated_project_url(cls, value: str | None, info: Any) -> str | None:
         return None if value is None else _optional_url(value, info.field_name)
 
+    # ========== TERMS AND CONDITIONS - ADD THIS VALIDATOR ==========
+    @field_validator("terms_accepted")
+    @classmethod
+    def validate_terms_update(cls, value: bool | None) -> bool | None:
+        if value is not None and not value:
+            raise ValueError("You must accept the terms and conditions to proceed")
+        return value
+
 
 class ProjectRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -139,6 +164,10 @@ class ProjectRecord(BaseModel):
     jira_link: str = ""
     business_owner_email: str
     decision_comment: str = ""
+    # ========== TERMS AND CONDITIONS - ADD THESE 3 LINES ==========
+    terms_accepted_at: datetime | None = None
+    terms_accepted_by: str = ""
+    terms_version: str = ""
 
     @field_validator(
         "description",
@@ -147,6 +176,9 @@ class ProjectRecord(BaseModel):
         "technical_details",
         "jira_link",
         "decision_comment",
+        # ========== TERMS AND CONDITIONS - ADD THESE 2 LINES ==========
+        "terms_accepted_by",
+        "terms_version",
         mode="before",
     )
     @classmethod
@@ -462,6 +494,7 @@ class WorkerCompletion(StrictModel):
     @classmethod
     def run_url(cls, value: str) -> str:
         return _optional_url(value, "deployment_run_url")
+
 
 class AssetScanRequest(StrictModel):
     environment: Literal["dev", "prod"] = "dev"

@@ -4,32 +4,1382 @@
   <div><p class="eyebrow">Project identity</p><h1>{{ "Edit project" if project else "Register a project" }}</h1>
   <p>Repository and deployment settings are intentionally not required during registration.</p></div>
 </div>
-<form id="project-form" class="panel form-grid" data-project-id="{{ project.project_id if project else '' }}">
-  <label class="field span-2">Project name<span>*</span><input name="name" required maxlength="200" value="{{ project.name if project else '' }}"></label>
-  <label class="field">Team<span>*</span>
+
+<!-- ========== ERROR SUMMARY ========== -->
+<div id="error-summary" class="error-summary" style="display: none;">
+  <div class="error-summary-content">
+    <h4>⚠️ Please fix the following errors:</h4>
+    <ul id="error-list"></ul>
+  </div>
+</div>
+
+<form id="project-form" class="panel form-grid" data-project-id="{{ project.project_id if project else '' }}" novalidate>
+  <label class="field span-2">
+    <span class="field-label">Project name <span class="required">*</span></span>
+    <input name="name" required maxlength="200" value="{{ project.name if project else '' }}" placeholder="Enter project name">
+    <span class="field-error" data-for="name"></span>
+  </label>
+  
+  <label class="field">
+    <span class="field-label">Team <span class="required">*</span></span>
     <select name="team_name" required>
       <option value="">Select a team</option>
-      {% for team in settings.teams %}<option value="{{ team }}" {% if project and project.team_name == team %}selected{% endif %}>{{ team }}</option>{% endfor %}
-      {% if project and project.team_name not in settings.teams %}<option selected value="{{ project.team_name }}">{{ project.team_name }}</option>{% endif %}
+      {% for team in settings.teams %}
+        <option value="{{ team }}" {% if project and project.team_name == team %}selected{% endif %}>{{ team }}</option>
+      {% endfor %}
+      {% if project and project.team_name not in settings.teams %}
+        <option selected value="{{ project.team_name }}">{{ project.team_name }}</option>
+      {% endif %}
     </select>
+    <span class="field-error" data-for="team_name"></span>
   </label>
-  <label class="field">Data classification<span>*</span>
+  
+  <label class="field">
+    <span class="field-label">Data classification <span class="required">*</span></span>
     <select name="data_classification" required>
       <option value="">Select classification</option>
-      {% for item in settings.data_classifications %}<option value="{{ item }}" {% if project and project.data_classification == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      {% for item in settings.data_classifications %}
+        <option value="{{ item }}" {% if project and project.data_classification == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
     </select>
+    <span class="field-error" data-for="data_classification"></span>
   </label>
-  <label class="field">Technical owner<span>*</span><input type="email" name="technical_owner_email" required value="{{ project.technical_owner_email if project else actor.subject }}"></label>
-  <label class="field">Business owner<span>*</span><input type="email" name="business_owner_email" required value="{{ project.business_owner_email if project else '' }}"></label>
-  <label class="field span-2">Description<textarea name="description" rows="3">{{ project.description if project else '' }}</textarea></label>
-  <label class="field">Planned go-live date<input type="date" name="go_live_date" value="{{ project.go_live_date if project and project.go_live_date else '' }}"></label>
-  <label class="field">Jira / change link<input type="url" name="jira_link" placeholder="https://..." value="{{ project.jira_link if project else '' }}"></label>
-  <label class="field span-2">Documentation link<input type="url" name="documentation_link" placeholder="https://..." value="{{ project.documentation_link if project else '' }}"></label>
-  <label class="field span-2">Data sources<textarea name="data_sources" rows="3" placeholder="Describe upstream sources and shared dependencies">{{ project.data_sources if project else '' }}</textarea></label>
-  <label class="field span-2">Technical details<textarea name="technical_details" rows="4" placeholder="Architecture, schedules, support details, or other notes">{{ project.technical_details if project else '' }}</textarea></label>
+  
+  <label class="field">
+    <span class="field-label">Technical owner <span class="required">*</span></span>
+    <input type="email" name="technical_owner_email" required value="{{ project.technical_owner_email if project else actor.subject }}" placeholder="email@company.com">
+    <span class="field-error" data-for="technical_owner_email"></span>
+  </label>
+  
+  <label class="field">
+    <span class="field-label">Business owner <span class="required">*</span></span>
+    <input type="email" name="business_owner_email" required value="{{ project.business_owner_email if project else '' }}" placeholder="email@company.com">
+    <span class="field-error" data-for="business_owner_email"></span>
+  </label>
+  
+  <label class="field span-2">
+    <span class="field-label">Description</span>
+    <textarea name="description" rows="3" placeholder="Brief description of the project">{{ project.description if project else '' }}</textarea>
+    <span class="field-error" data-for="description"></span>
+  </label>
+  
+  <label class="field">
+    <span class="field-label">Planned go-live date <span class="date-hint">(Today or future)</span></span>
+    <input type="date" name="go_live_date" id="go-live-date" 
+           value="{{ project.go_live_date if project and project.go_live_date else today_date }}"
+           min="{{ today_date }}">
+    <span class="field-error" data-for="go_live_date"></span>
+  </label>
+  
+  <!-- ========== JIRA LINK - Default "NA" ========== -->
+  <label class="field">
+    <span class="field-label">Jira / change link</span>
+    <input type="text" name="jira_link" placeholder="https://jira.company.com/browse/PROJ-123" 
+           value="{% if project and project.jira_link %}{{ project.jira_link }}{% else %}NA{% endif %}">
+    <span class="field-error" data-for="jira_link"></span>
+  </label>
+  
+  <!-- ========== DOCUMENTATION LINK - Default "NA" ========== -->
+  <label class="field span-2">
+    <span class="field-label">Documentation link</span>
+    <input type="text" name="documentation_link" placeholder="https://docs.company.com/project" 
+           value="{% if project and project.documentation_link %}{{ project.documentation_link }}{% else %}NA{% endif %}">
+    <span class="field-error" data-for="documentation_link"></span>
+  </label>
+  
+  <label class="field span-2">
+    <span class="field-label">Data sources</span>
+    <textarea name="data_sources" rows="3" placeholder="Describe upstream sources and shared dependencies">{{ project.data_sources if project else '' }}</textarea>
+    <span class="field-error" data-for="data_sources"></span>
+  </label>
+  
+  <label class="field span-2">
+    <span class="field-label">Technical details</span>
+    <textarea name="technical_details" rows="4" placeholder="Architecture, schedules, support details, or other notes">{{ project.technical_details if project else '' }}</textarea>
+    <span class="field-error" data-for="technical_details"></span>
+  </label>
+
+  <!-- ========== TERMS AND CONDITIONS ========== -->
+  <div class="field span-2 terms-section">
+    <h3>Terms and Conditions</h3>
+    <div class="terms-content">
+      <div class="terms-list">
+        <div class="term-item">
+          <span class="term-number">1.</span>
+          <span class="term-text"><strong>Regulated-Classified Data:</strong> Regulated-Classified data must not be stored, processed, transmitted, or loaded into Databricks.</span>
+        </div>
+        <div class="term-item">
+          <span class="term-number">2.</span>
+          <span class="term-text"><strong>SAP Connection:</strong> Projects must not establish a direct connection between SAP and Databricks.</span>
+        </div>
+        <div class="term-item">
+          <span class="term-number">3.</span>
+          <span class="term-text"><strong>Restricted Data Review:</strong> Before loading Restricted Data into Databricks, the project use case, business need, and expected return on investment (ROI) must be reviewed with the Databricks Core Team.</span>
+        </div>
+        <div class="term-item">
+          <span class="term-number">4.</span>
+          <span class="term-text"><strong>Access Control:</strong> Projects containing Restricted Data must use approved security groups to manage access and limit it to authorized individuals with a valid business need.</span>
+        </div>
+        <div class="term-item">
+          <span class="term-number">5.</span>
+          <span class="term-text"><strong>Data Tagging:</strong> All data objects must be consistently tagged, cataloged, and classified in accordance with applicable data governance standards.</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="terms-acceptance">
+      <label class="checkbox-label" id="terms-label">
+        <input type="checkbox" id="terms-checkbox" required 
+               {% if project and project.terms_accepted and project.terms_up_to_date %}checked{% endif %}>
+        <span class="checkbox-text">
+          <span class="acknowledgement-text">
+            I acknowledge that I have read, understood, and agree to comply with the terms and conditions listed above.
+          </span>
+          <span class="required-star">*</span>
+        </span>
+      </label>
+      <span class="field-error" data-for="terms" id="terms-error-container"></span>
+      {% if project and project.terms_accepted and not project.terms_up_to_date %}
+      <div class="warning-message">
+        <span class="warning-icon">⚠️</span>
+        Terms and conditions have been updated since you last accepted them. Please re-accept the current terms to save changes.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
   <div class="form-actions span-2">
     <a class="button secondary" href="{{ '/projects/' ~ project.project_id if project else '/projects' }}">Cancel</a>
-    <button class="button primary" type="submit">{{ "Save changes" if project else "Register and get project ID" }}</button>
+    <button class="button primary" type="submit" id="submit-btn">
+      <span class="btn-text">{{ "Save changes" if project else "Register and get project ID" }}</span>
+      <span class="btn-spinner" style="display: none;">⏳</span>
+    </button>
   </div>
 </form>
+
+<!-- ========== ADVANCED PAGE LOADER OVERLAY ========== -->
+<div id="page-loader" style="display: none;">
+  <div class="loader-overlay">
+    <div class="loader-container">
+      <!-- Main Spinner -->
+      <div class="loader-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <!-- Loading Text -->
+      <div class="loader-text">Loading<span class="loader-dots">...</span></div>
+      <!-- Optional Progress Bar -->
+      <div class="loader-progress">
+        <div class="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ========== ERROR SUMMARY STYLES ========== */
+  .error-summary {
+    background: #fff8f8;
+    border: 2px solid #d32f2f;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  
+  .error-summary.visible {
+    display: block;
+    animation: slideDown 0.3s ease;
+  }
+  
+  .error-summary h4 {
+    color: #d32f2f;
+    margin: 0 0 10px 0;
+    font-size: 0.95rem;
+  }
+  
+  .error-summary ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #333;
+  }
+  
+  .error-summary li {
+    padding: 4px 0;
+    font-size: 0.9rem;
+  }
+  
+  .error-summary .field-name {
+    font-weight: 600;
+    color: #d32f2f;
+  }
+
+  /* ========== FIELD LABELS ========== */
+  .field-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+  
+  .required {
+    color: #d32f2f;
+    font-weight: 700;
+  }
+
+  .date-hint {
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: #6c7a8a;
+    margin-left: 4px;
+  }
+
+  /* ========== INPUT FIELDS ========== */
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: #1a1a1a;
+    background: #ffffff;
+    border: 2px solid #d0d7de;
+    border-radius: 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: #c8102e;
+    box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.12);
+  }
+
+  input:hover, select:hover, textarea:hover {
+    border-color: #b0b8c0;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #8a8f98;
+  }
+
+  /* ========== DATE VALIDATION ========== */
+  input[type="date"]:valid {
+    border-color: #2e7d32;
+  }
+
+  input[type="date"]:valid:focus {
+    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.12);
+  }
+
+  input[type="date"]:invalid:not(:placeholder-shown) {
+    border-color: #d32f2f;
+    background: #fff8f8;
+  }
+
+  input[type="date"]:invalid:not(:placeholder-shown):focus {
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.12);
+  }
+
+  /* ========== ERROR STATES ========== */
+  .field.error input,
+  .field.error select,
+  .field.error textarea {
+    border-color: #d32f2f;
+    background: #fff8f8;
+  }
+
+  .field.error input:focus,
+  .field.error select:focus,
+  .field.error textarea:focus {
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.12);
+  }
+
+  .field-error {
+    display: none;
+    font-size: 0.8rem;
+    color: #d32f2f;
+    margin-top: 6px;
+    padding: 4px 0;
+    font-weight: 500;
+    min-height: 20px;
+  }
+
+  .field-error.visible {
+    display: block;
+    animation: slideDown 0.25s ease;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ========== TERMS SECTION ========== */
+  .terms-section {
+    background: #f8f9fa;
+    border: 2px solid #e8edf2;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-top: 8px;
+    transition: border-color 0.2s ease;
+  }
+
+  .terms-section.error {
+    border-color: #d32f2f;
+    background: #fff8f8;
+  }
+
+  .terms-section h3 {
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .terms-content {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    border: 1px solid #e8edf2;
+    margin-bottom: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .terms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .term-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    padding: 4px 0;
+  }
+
+  .term-number {
+    font-weight: 700;
+    color: #c8102e;
+    min-width: 24px;
+    flex-shrink: 0;
+  }
+
+  .term-text {
+    color: #2d2d2d;
+  }
+
+  .term-text strong {
+    color: #1a1a1a;
+  }
+
+  /* ========== CHECKBOX ========== */
+  .terms-acceptance {
+    margin-top: 4px;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #d0d7de;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .checkbox-label:hover {
+    border-color: #b0b8c0;
+    background: #fafbfc;
+  }
+
+  .checkbox-label.error {
+    border-color: #d32f2f;
+    background: #fff8f8;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #c8102e;
+    border-radius: 4px;
+  }
+
+  .checkbox-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .acknowledgement-text {
+    font-weight: 500;
+    color: #1a1a1a;
+  }
+
+  .required-star {
+    color: #d32f2f;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+
+  /* ========== WARNING MESSAGE ========== */
+  .warning-message {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: #fff8e1;
+    border: 1px solid #ffcc02;
+    border-radius: 8px;
+    color: #6d4c00;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .warning-icon {
+    font-size: 1.2rem;
+  }
+
+  /* ========== FORM ACTIONS ========== */
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid #e8edf2;
+    margin-top: 8px;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .button:active {
+    transform: scale(0.97);
+  }
+
+  .button.primary {
+    background: #c8102e;
+    color: white;
+    box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+  }
+
+  .button.primary:hover:not(:disabled) {
+    background: #a00d25;
+    box-shadow: 0 6px 16px rgba(200, 16, 46, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .button.primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .button.secondary {
+    background: #f0f2f5;
+    color: #1a1a1a;
+    border: 2px solid transparent;
+  }
+
+  .button.secondary:hover {
+    background: #e4e7ec;
+    border-color: #d0d7de;
+  }
+
+  .btn-spinner {
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ========== TOAST NOTIFICATIONS ========== */
+  .toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 420px;
+    width: 100%;
+  }
+
+  .toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: #1a1a1a;
+    color: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: translateX(calc(100% + 24px));
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 4px solid transparent;
+  }
+
+  .toast.visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .toast.error {
+    border-left-color: #d32f2f;
+    background: #2d1a1a;
+  }
+
+  .toast.success {
+    border-left-color: #2e7d32;
+    background: #1a2d1a;
+  }
+
+  .toast-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .toast-content {
+    flex: 1;
+  }
+
+  .toast-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .toast-message {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-top: 2px;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+    transition: color 0.2s;
+  }
+
+  .toast-close:hover {
+    color: white;
+  }
+
+  /* ================================================================
+     ========== ADVANCED PAGE LOADER STYLES ==========
+     ================================================================ */
+
+  /* Overlay - Full screen grey out */
+  #page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+    display: none;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+  }
+
+  #page-loader.show {
+    display: block !important;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Loader Container - Centers everything */
+  .loader-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 56px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    min-width: 280px;
+    animation: scaleIn 0.3s ease;
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Multi-ring Spinner */
+  .loader-spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 24px;
+  }
+
+  .spinner-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    animation: spinRing 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+
+  .spinner-ring:nth-child(1) {
+    border-top-color: #c8102e;
+    animation-delay: -0.45s;
+  }
+
+  .spinner-ring:nth-child(2) {
+    border-right-color: #e74c3c;
+    animation-delay: -0.3s;
+  }
+
+  .spinner-ring:nth-child(3) {
+    border-bottom-color: #f39c12;
+    animation-delay: -0.15s;
+  }
+
+  .spinner-ring:nth-child(4) {
+    border-left-color: #2ecc71;
+    animation-delay: 0s;
+  }
+
+  @keyframes spinRing {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Loading Text with animated dots */
+  .loader-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+
+  .loader-dots {
+    display: inline-block;
+    animation: dots 1.4s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0% {
+      content: "";
+    }
+    25% {
+      content: ".";
+    }
+    50% {
+      content: "..";
+    }
+    75% {
+      content: "...";
+    }
+    100% {
+      content: "";
+    }
+  }
+
+  /* Progress Bar */
+  .loader-progress {
+    width: 200px;
+    height: 4px;
+    background: #e8edf2;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #c8102e, #e74c3c, #f39c12);
+    border-radius: 4px;
+    animation: progress 2s ease-in-out infinite;
+  }
+
+  @keyframes progress {
+    0% {
+      width: 0%;
+      transform: translateX(0);
+    }
+    50% {
+      width: 70%;
+      transform: translateX(0);
+    }
+    100% {
+      width: 100%;
+      transform: translateX(0);
+    }
+  }
+
+  /* Pulse effect on loader container */
+  .loader-container::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 22px;
+    background: linear-gradient(45deg, #c8102e, #e74c3c, #f39c12, #c8102e);
+    background-size: 300% 300%;
+    z-index: -1;
+    animation: pulseBorder 3s ease infinite;
+  }
+
+  @keyframes pulseBorder {
+    0% {
+      background-position: 0% 50%;
+      opacity: 0.3;
+    }
+    50% {
+      background-position: 100% 50%;
+      opacity: 0.8;
+    }
+    100% {
+      background-position: 0% 50%;
+      opacity: 0.3;
+    }
+  }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 768px) {
+    .terms-section {
+      padding: 16px 18px;
+    }
+
+    .terms-content {
+      max-height: 200px;
+      padding: 12px 14px;
+    }
+
+    .term-item {
+      font-size: 0.82rem;
+    }
+
+    .checkbox-label {
+      padding: 10px 12px;
+    }
+
+    .checkbox-text {
+      font-size: 0.85rem;
+    }
+
+    .form-actions {
+      flex-direction: column-reverse;
+    }
+
+    .form-actions .button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .toast-container {
+      right: 16px;
+      left: 16px;
+      max-width: none;
+      top: 16px;
+    }
+
+    /* Loader responsive */
+    .loader-container {
+      padding: 32px 24px;
+      min-width: 200px;
+      margin: 0 16px;
+    }
+
+    .loader-spinner {
+      width: 60px;
+      height: 60px;
+    }
+
+    .loader-text {
+      font-size: 0.95rem;
+    }
+
+    .loader-progress {
+      width: 150px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+    
+    #page-loader {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    
+    .loader-container::after {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    'use strict';
+
+    const form = document.getElementById('project-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnSpinner = submitBtn.querySelector('.btn-spinner');
+    const projectId = form.dataset.projectId;
+    const isEdit = !!projectId;
+    const dateInput = document.getElementById('go-live-date');
+    const errorSummary = document.getElementById('error-summary');
+    const errorList = document.getElementById('error-list');
+    const pageLoader = document.getElementById('page-loader');
+
+    // ============================================================
+    // Show/Hide Page Loader
+    // ============================================================
+    function showPageLoader() {
+      pageLoader.classList.add('show');
+      // Prevent body scroll when loader is active
+      document.body.style.overflow = 'hidden';
+    }
+
+    function hidePageLoader() {
+      pageLoader.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    // Hide loader after page is fully loaded
+    window.addEventListener('load', function() {
+      // Small delay to ensure smooth transition
+      setTimeout(hidePageLoader, 300);
+    });
+
+    // Show loader initially
+    showPageLoader();
+
+    // ============================================================
+    // Set min date to today and default value
+    // ============================================================
+    function setDateDefaults() {
+      if (dateInput) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
+        dateInput.setAttribute('min', todayStr);
+        dateInput.setAttribute('max', `${year + 10}-12-31`);
+        
+        if (!isEdit && !dateInput.value) {
+          dateInput.value = todayStr;
+        }
+      }
+    }
+    setDateDefaults();
+
+    // ============================================================
+    // Date validation
+    // ============================================================
+    function validateDate(field) {
+      const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
+      const fieldWrapper = field.closest('.field');
+
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.remove('visible');
+      }
+      if (fieldWrapper) {
+        fieldWrapper.classList.remove('error');
+      }
+
+      if (!field.value) {
+        return true;
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(field.value)) {
+        if (errorEl) {
+          errorEl.textContent = 'Please enter a valid date in YYYY-MM-DD format.';
+          errorEl.classList.add('visible');
+        }
+        if (fieldWrapper) {
+          fieldWrapper.classList.add('error');
+        }
+        return false;
+      }
+
+      const parts = field.value.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+
+      if (parts[0].length !== 4 || year < 1900 || year > 2100) {
+        if (errorEl) {
+          errorEl.textContent = 'Please enter a valid year between 1900 and 2100.';
+          errorEl.classList.add('visible');
+        }
+        if (fieldWrapper) {
+          fieldWrapper.classList.add('error');
+        }
+        return false;
+      }
+
+      const selectedDate = new Date(year, month, day);
+      if (selectedDate.getFullYear() !== year || 
+          selectedDate.getMonth() !== month || 
+          selectedDate.getDate() !== day) {
+        if (errorEl) {
+          errorEl.textContent = 'Please enter a valid date (e.g., 2025-12-31).';
+          errorEl.classList.add('visible');
+        }
+        if (fieldWrapper) {
+          fieldWrapper.classList.add('error');
+        }
+        return false;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        if (errorEl) {
+          errorEl.textContent = 'Please select today or a future date.';
+          errorEl.classList.add('visible');
+        }
+        if (fieldWrapper) {
+          fieldWrapper.classList.add('error');
+        }
+        return false;
+      }
+
+      return true;
+    }
+
+    // ============================================================
+    // URL Validation Helper
+    // ============================================================
+    function isValidUrl(string) {
+      try {
+        new URL(string);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // ============================================================
+    // General field validation
+    // ============================================================
+    function validateField(field) {
+      const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
+      const fieldWrapper = field.closest('.field');
+      
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.remove('visible');
+      }
+      if (fieldWrapper) {
+        fieldWrapper.classList.remove('error');
+      }
+
+      if (field.name === 'go_live_date') {
+        return validateDate(field);
+      }
+
+      if (field.hasAttribute('required') && !field.value.trim()) {
+        showFieldError(field, 'This field is required.');
+        return false;
+      }
+
+      if (field.type === 'email' && field.value.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(field.value.trim())) {
+          showFieldError(field, 'Please enter a valid email address.');
+          return false;
+        }
+      }
+
+      // URL validation - Skip "NA"
+      if ((field.name === 'jira_link' || field.name === 'documentation_link') && field.value.trim()) {
+        const val = field.value.trim();
+        // If value is "NA" or "N/A", skip validation
+        if (val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') {
+          return true;
+        }
+        // Otherwise validate as URL
+        if (!isValidUrl(val)) {
+          showFieldError(field, 'Please enter a valid URL (e.g., https://example.com) or "NA" for not applicable.');
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function showFieldError(field, message) {
+      const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
+      const fieldWrapper = field.closest('.field');
+      
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.add('visible');
+      }
+      if (fieldWrapper) {
+        fieldWrapper.classList.add('error');
+      }
+    }
+
+    // ============================================================
+    // Terms validation
+    // ============================================================
+    function validateTerms() {
+      const checkbox = document.getElementById('terms-checkbox');
+      const errorContainer = document.getElementById('terms-error-container');
+      const termsSection = document.querySelector('.terms-section');
+      const checkboxLabel = document.querySelector('.checkbox-label');
+
+      if (errorContainer) {
+        errorContainer.textContent = '';
+        errorContainer.classList.remove('visible');
+      }
+      if (termsSection) {
+        termsSection.classList.remove('error');
+      }
+      if (checkboxLabel) {
+        checkboxLabel.classList.remove('error');
+      }
+
+      if (!checkbox.checked) {
+        if (errorContainer) {
+          errorContainer.textContent = 'You must accept the terms and conditions to proceed.';
+          errorContainer.classList.add('visible');
+        }
+        if (termsSection) {
+          termsSection.classList.add('error');
+        }
+        if (checkboxLabel) {
+          checkboxLabel.classList.add('error');
+        }
+        return false;
+      }
+
+      return true;
+    }
+
+    // ============================================================
+    // Show validation errors in summary
+    // ============================================================
+    function showErrorSummary(errors) {
+      errorSummary.classList.add('visible');
+      errorList.innerHTML = '';
+      
+      errors.forEach(function(error) {
+        const li = document.createElement('li');
+        const fieldName = error.field || 'Unknown field';
+        const message = error.message || 'Invalid value';
+        li.innerHTML = `<span class="field-name">${fieldName}:</span> ${message}`;
+        errorList.appendChild(li);
+      });
+    }
+
+    function clearErrorSummary() {
+      errorSummary.classList.remove('visible');
+      errorList.innerHTML = '';
+    }
+
+    // ============================================================
+    // Toast notification
+    // ============================================================
+    function showToast(message, type = 'error', title = '') {
+      const container = document.getElementById('toast-container') || createToastContainer();
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      const icons = { error: '❌', success: '✅', warning: '⚠️', info: 'ℹ️' };
+      const titles = { error: 'Error', success: 'Success', warning: 'Warning', info: 'Info' };
+
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+        <div class="toast-content">
+          <div class="toast-title">${title || titles[type] || 'Notice'}</div>
+          <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" aria-label="Dismiss notification">&times;</button>
+      `;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.add('visible');
+      });
+
+      const timeout = setTimeout(() => {
+        dismissToast(toast);
+      }, 5000);
+
+      toast.querySelector('.toast-close').addEventListener('click', () => {
+        clearTimeout(timeout);
+        dismissToast(toast);
+      });
+
+      return toast;
+    }
+
+    function createToastContainer() {
+      const container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+      return container;
+    }
+
+    function dismissToast(toast) {
+      toast.classList.remove('visible');
+      setTimeout(() => {
+        toast.remove();
+      }, 350);
+    }
+
+    // ============================================================
+    // Real-time validation
+    // ============================================================
+    form.querySelectorAll('input, select, textarea').forEach(field => {
+      field.addEventListener('blur', function() {
+        if (this.hasAttribute('required') || this.type === 'email' || this.name === 'jira_link' || this.name === 'documentation_link' || this.name === 'go_live_date') {
+          validateField(this);
+        }
+      });
+
+      field.addEventListener('input', function() {
+        const errorEl = document.querySelector(`.field-error[data-for="${this.name}"]`);
+        const fieldWrapper = this.closest('.field');
+        
+        if (errorEl && errorEl.classList.contains('visible')) {
+          const isValid = validateField(this);
+          if (isValid) {
+            errorEl.classList.remove('visible');
+            if (fieldWrapper) {
+              fieldWrapper.classList.remove('error');
+            }
+          }
+        }
+      });
+    });
+
+    // Terms checkbox
+    document.getElementById('terms-checkbox').addEventListener('change', function() {
+      const errorContainer = document.getElementById('terms-error-container');
+      const termsSection = document.querySelector('.terms-section');
+      const checkboxLabel = document.querySelector('.checkbox-label');
+
+      if (this.checked) {
+        if (errorContainer) {
+          errorContainer.textContent = '';
+          errorContainer.classList.remove('visible');
+        }
+        if (termsSection) {
+          termsSection.classList.remove('error');
+        }
+        if (checkboxLabel) {
+          checkboxLabel.classList.remove('error');
+        }
+      }
+    });
+
+    // ============================================================
+    // Form submission
+    // ============================================================
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      clearErrorSummary();
+
+      let isValid = true;
+      const fieldErrors = [];
+      const fields = this.querySelectorAll('input, select, textarea');
+      
+      fields.forEach(field => {
+        if (!validateField(field)) {
+          isValid = false;
+          const label = field.closest('.field')?.querySelector('.field-label')?.textContent?.trim() || field.name;
+          const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
+          fieldErrors.push({
+            field: label,
+            message: errorEl?.textContent || 'Invalid value'
+          });
+        }
+      });
+
+      if (!validateTerms()) {
+        isValid = false;
+        fieldErrors.push({
+          field: 'Terms and Conditions',
+          message: 'You must accept the terms and conditions to proceed.'
+        });
+        document.getElementById('terms-checkbox').scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+
+      if (!isValid) {
+        showErrorSummary(fieldErrors);
+        showToast('Please fix the highlighted errors before continuing.', 'error', 'Validation Failed');
+        return;
+      }
+
+      // Prepare data
+      const formData = new FormData(form);
+      const termsVersion = '{{ settings.current_terms_version }}';
+
+      // ========== FIX: Handle Jira and Documentation links properly ==========
+      function getValueOrNull(fieldName) {
+        const value = formData.get(fieldName);
+        
+        // For Jira and Documentation links, always return a string
+        if (fieldName === 'jira_link' || fieldName === 'documentation_link') {
+          if (!value || value.trim() === '') {
+            return 'NA';
+          }
+          // If value is "NA" or "N/A", keep it as "NA"
+          if (value.trim().toUpperCase() === 'NA' || value.trim().toUpperCase() === 'N/A') {
+            return 'NA';
+          }
+          return value.trim();
+        }
+        
+        // For other fields, return null if empty
+        if (!value || value.trim() === '') {
+          return null;
+        }
+        return value.trim();
+      }
+
+      const data = {
+        name: formData.get('name') || '',
+        team_name: formData.get('team_name') || '',
+        technical_owner_email: formData.get('technical_owner_email') || '',
+        business_owner_email: formData.get('business_owner_email') || '',
+        description: formData.get('description') || '',
+        data_classification: formData.get('data_classification') || '',
+        go_live_date: getValueOrNull('go_live_date'),
+        jira_link: getValueOrNull('jira_link'),
+        documentation_link: getValueOrNull('documentation_link'),
+        data_sources: formData.get('data_sources') || '',
+        technical_details: formData.get('technical_details') || '',
+        terms_accepted: document.getElementById('terms-checkbox').checked,
+        terms_version: termsVersion
+      };
+
+      const url = isEdit ? `/api/projects/${projectId}` : '/api/projects';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      // Show spinner
+      submitBtn.disabled = true;
+      btnText.textContent = isEdit ? 'Saving...' : 'Registering...';
+      btnSpinner.style.display = 'inline-block';
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Governance-Request': 'v4'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to save project';
+          if (result.detail) {
+            if (Array.isArray(result.detail)) {
+              const errors = result.detail.map(err => {
+                if (typeof err === 'object') {
+                  return `${err.field || 'unknown'}: ${err.message || 'Invalid value'}`;
+                }
+                return String(err);
+              });
+              errorMessage = errors.join('; ');
+            } else {
+              errorMessage = result.detail || result.error || errorMessage;
+            }
+          }
+          throw new Error(errorMessage);
+        }
+
+        showToast('Project saved successfully!', 'success', 'Success');
+        
+        setTimeout(() => {
+          window.location.href = `/projects/${result.project_id}`;
+        }, 800);
+
+      } catch (error) {
+        showToast(error.message, 'error', 'Error');
+        
+        submitBtn.disabled = false;
+        btnText.textContent = isEdit ? 'Save changes' : 'Register and get project ID';
+        btnSpinner.style.display = 'none';
+      }
+    });
+
+  })();
+</script>
 {% endblock %}
