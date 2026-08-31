@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-heading compact">
-  <div><p class="eyebrow">Project identity</p><h1>{{ "Edit project" if project else "Register a project" }}</h1>
+  <div><p class="eyebrow">Project identity</p><h1>{{ "Edit project" if project and project.project_id else "Register a project" }}</h1>
   <p>Repository and deployment settings are intentionally not required during registration.</p></div>
 </div>
 
