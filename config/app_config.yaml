@@ -25,10 +25,11 @@ project_defaults:
     - Public
     - Internal
     - Restricted
-    - Restricted-Classified
+    - Regulated-Classified
   teams:
     - Foundry
     - Operations
+    -
 
 security:
   admin_principals:
