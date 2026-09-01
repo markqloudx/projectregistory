@@ -14,6 +14,43 @@
 </div>
 
 <form id="project-form" class="panel form-grid" data-project-id="{{ project.project_id if project else '' }}" novalidate>
+  
+  <!-- ========== WORKSPACE: FROM DROPDOWN ========== -->
+  <label class="field">
+    <span class="field-label">From Workspace <span class="required">*</span></span>
+    <select name="from_workspace" id="from-workspace" required>
+      <option value="">Select from workspace</option>
+      {% for ws in available_workspaces %}
+        <option value="{{ ws }}" {% if project and project.from_workspace == ws %}selected{% endif %}>
+          {{ ws }}
+        </option>
+      {% endfor %}
+    </select>
+    <span class="field-error" data-for="from_workspace"></span>
+  </label>
+  
+  <!-- ========== WORKSPACE: TO DROPDOWN ========== -->
+  <label class="field">
+    <span class="field-label">To Workspace <span class="required">*</span></span>
+    <select name="to_workspace" id="to-workspace" required>
+      <option value="">Select to workspace</option>
+      {% for ws in available_workspaces %}
+        <option value="{{ ws }}" {% if project and project.to_workspace == ws %}selected{% endif %}>
+          {{ ws }}
+        </option>
+      {% endfor %}
+    </select>
+    <span class="field-error" data-for="to_workspace"></span>
+  </label>
+  
+  <!-- ========== HIDDEN FIELD for combined workspace ========== -->
+  <input type="hidden" name="workspace" id="workspace-hidden" value="{{ project.workspace if project else '' }}">
+  
+  <!-- ========== DISPLAY COMBINED WORKSPACE ========== -->
+  <div class="field span-2" id="workspace-display" style="display: none; padding: 8px 0; font-size: 0.9rem; color: var(--muted);">
+    <strong>Workspace Route:</strong> <span id="workspace-route-display" style="font-weight: 600; color: var(--accent);"></span>
+  </div>
+  
   <label class="field span-2">
     <span class="field-label">Project name <span class="required">*</span></span>
     <input name="name" required maxlength="200" value="{{ project.name if project else '' }}" placeholder="Enter project name">
@@ -157,20 +194,17 @@
   </div>
 </form>
 
-<!-- ========== ADVANCED PAGE LOADER OVERLAY ========== -->
+<!-- ========== PAGE LOADER ========== -->
 <div id="page-loader" style="display: none;">
   <div class="loader-overlay">
     <div class="loader-container">
-      <!-- Main Spinner -->
       <div class="loader-spinner">
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
       </div>
-      <!-- Loading Text -->
       <div class="loader-text">Loading<span class="loader-dots">...</span></div>
-      <!-- Optional Progress Bar -->
       <div class="loader-progress">
         <div class="progress-bar"></div>
       </div>
@@ -602,10 +636,9 @@
   }
 
   /* ================================================================
-     ========== ADVANCED PAGE LOADER STYLES ==========
+     ========== LOADER STYLES ==========
      ================================================================ */
 
-  /* Overlay - Full screen grey out */
   #page-loader {
     position: fixed;
     top: 0;
@@ -625,15 +658,10 @@
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
-  /* Loader Container - Centers everything */
   .loader-container {
     position: absolute;
     top: 50%;
@@ -662,7 +690,6 @@
     }
   }
 
-  /* Multi-ring Spinner */
   .loader-spinner {
     position: relative;
     width: 80px;
@@ -700,15 +727,10 @@
   }
 
   @keyframes spinRing {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 
-  /* Loading Text with animated dots */
   .loader-text {
     font-size: 1.1rem;
     font-weight: 600;
@@ -723,24 +745,13 @@
   }
 
   @keyframes dots {
-    0% {
-      content: "";
-    }
-    25% {
-      content: ".";
-    }
-    50% {
-      content: "..";
-    }
-    75% {
-      content: "...";
-    }
-    100% {
-      content: "";
-    }
+    0% { content: ""; }
+    25% { content: "."; }
+    50% { content: ".."; }
+    75% { content: "..."; }
+    100% { content: ""; }
   }
 
-  /* Progress Bar */
   .loader-progress {
     width: 200px;
     height: 4px;
@@ -758,21 +769,11 @@
   }
 
   @keyframes progress {
-    0% {
-      width: 0%;
-      transform: translateX(0);
-    }
-    50% {
-      width: 70%;
-      transform: translateX(0);
-    }
-    100% {
-      width: 100%;
-      transform: translateX(0);
-    }
+    0% { width: 0%; transform: translateX(0); }
+    50% { width: 70%; transform: translateX(0); }
+    100% { width: 100%; transform: translateX(0); }
   }
 
-  /* Pulse effect on loader container */
   .loader-container::after {
     content: '';
     position: absolute;
@@ -785,18 +786,9 @@
   }
 
   @keyframes pulseBorder {
-    0% {
-      background-position: 0% 50%;
-      opacity: 0.3;
-    }
-    50% {
-      background-position: 100% 50%;
-      opacity: 0.8;
-    }
-    100% {
-      background-position: 0% 50%;
-      opacity: 0.3;
-    }
+    0% { background-position: 0% 50%; opacity: 0.3; }
+    50% { background-position: 100% 50%; opacity: 0.8; }
+    100% { background-position: 0% 50%; opacity: 0.3; }
   }
 
   /* ========== RESPONSIVE ========== */
@@ -838,7 +830,6 @@
       top: 16px;
     }
 
-    /* Loader responsive */
     .loader-container {
       padding: 32px 24px;
       min-width: 200px;
@@ -890,13 +881,19 @@
     const errorSummary = document.getElementById('error-summary');
     const errorList = document.getElementById('error-list');
     const pageLoader = document.getElementById('page-loader');
+    
+    // ========== WORKSPACE: Get elements ==========
+    const fromWorkspace = document.getElementById('from-workspace');
+    const toWorkspace = document.getElementById('to-workspace');
+    const workspaceHidden = document.getElementById('workspace-hidden');
+    const workspaceRouteDisplay = document.getElementById('workspace-route-display');
+    const workspaceDisplay = document.getElementById('workspace-display');
 
     // ============================================================
     // Show/Hide Page Loader
     // ============================================================
     function showPageLoader() {
       pageLoader.classList.add('show');
-      // Prevent body scroll when loader is active
       document.body.style.overflow = 'hidden';
     }
 
@@ -905,14 +902,88 @@
       document.body.style.overflow = '';
     }
 
-    // Hide loader after page is fully loaded
     window.addEventListener('load', function() {
-      // Small delay to ensure smooth transition
       setTimeout(hidePageLoader, 300);
     });
 
-    // Show loader initially
     showPageLoader();
+
+    // ============================================================
+    // WORKSPACE: Update hidden field and display
+    // ============================================================
+    function updateWorkspaceHidden() {
+      const fromVal = fromWorkspace.value;
+      const toVal = toWorkspace.value;
+      if (fromVal && toVal) {
+        const combined = fromVal + ' to ' + toVal;
+        workspaceHidden.value = combined;
+        workspaceRouteDisplay.textContent = combined;
+        workspaceDisplay.style.display = 'block';
+      } else {
+        workspaceHidden.value = '';
+        workspaceRouteDisplay.textContent = '';
+        workspaceDisplay.style.display = 'none';
+      }
+    }
+
+    function filterDropdowns() {
+      const fromVal = fromWorkspace.value;
+      const toVal = toWorkspace.value;
+      
+      // Filter "To" dropdown - remove the selected "From" value
+      Array.from(toWorkspace.options).forEach(opt => {
+        if (opt.value && opt.value === fromVal) {
+          opt.style.display = 'none';
+        } else {
+          opt.style.display = '';
+        }
+      });
+      
+      // Filter "From" dropdown - remove the selected "To" value
+      Array.from(fromWorkspace.options).forEach(opt => {
+        if (opt.value && opt.value === toVal) {
+          opt.style.display = 'none';
+        } else {
+          opt.style.display = '';
+        }
+      });
+      
+      updateWorkspaceHidden();
+    }
+
+    // ============================================================
+    // WORKSPACE: Event listeners
+    // ============================================================
+    fromWorkspace.addEventListener('change', filterDropdowns);
+    toWorkspace.addEventListener('change', filterDropdowns);
+
+    // ============================================================
+    // Set initial state for edit mode
+    // ============================================================
+    function setInitialWorkspace() {
+      const workspace = workspaceHidden.value;
+      if (workspace && workspace.includes(' to ')) {
+        const parts = workspace.split(' to ');
+        if (parts.length === 2) {
+          // Set from workspace
+          let fromExists = false;
+          Array.from(fromWorkspace.options).forEach(opt => {
+            if (opt.value === parts[0]) fromExists = true;
+          });
+          if (fromExists) fromWorkspace.value = parts[0];
+          
+          // Set to workspace
+          let toExists = false;
+          Array.from(toWorkspace.options).forEach(opt => {
+            if (opt.value === parts[1]) toExists = true;
+          });
+          if (toExists) toWorkspace.value = parts[1];
+          
+          filterDropdowns();
+          updateWorkspaceHidden();
+        }
+      }
+    }
 
     // ============================================================
     // Set min date to today and default value
@@ -1059,11 +1130,9 @@
       // URL validation - Skip "NA"
       if ((field.name === 'jira_link' || field.name === 'documentation_link') && field.value.trim()) {
         const val = field.value.trim();
-        // If value is "NA" or "N/A", skip validation
         if (val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') {
           return true;
         }
-        // Otherwise validate as URL
         if (!isValidUrl(val)) {
           showFieldError(field, 'Please enter a valid URL (e.g., https://example.com) or "NA" for not applicable.');
           return false;
@@ -1244,6 +1313,11 @@
     });
 
     // ============================================================
+    // Set initial workspace for edit mode
+    // ============================================================
+    setInitialWorkspace();
+
+    // ============================================================
     // Form submission
     // ============================================================
     form.addEventListener('submit', async function(e) {
@@ -1255,6 +1329,10 @@
       const fields = this.querySelectorAll('input, select, textarea');
       
       fields.forEach(field => {
+        // Skip from_workspace and to_workspace validation as they are UI only
+        if (field.name === 'from_workspace' || field.name === 'to_workspace') {
+          return;
+        }
         if (!validateField(field)) {
           isValid = false;
           const label = field.closest('.field')?.querySelector('.field-label')?.textContent?.trim() || field.name;
@@ -1265,6 +1343,15 @@
           });
         }
       });
+
+      // ========== WORKSPACE: Validate from/to are selected ==========
+      if (!fromWorkspace.value || !toWorkspace.value) {
+        isValid = false;
+        fieldErrors.push({
+          field: 'Workspace',
+          message: 'Please select both From and To workspaces.'
+        });
+      }
 
       if (!validateTerms()) {
         isValid = false;
@@ -1280,7 +1367,7 @@
 
       if (!isValid) {
         showErrorSummary(fieldErrors);
-        showToast('Please fix the highlighted errors before continuing.', 'error', 'Validation Failed');
+        // ========== FIX: Don't show toast for validation errors ==========
         return;
       }
 
@@ -1288,28 +1375,27 @@
       const formData = new FormData(form);
       const termsVersion = '{{ settings.current_terms_version }}';
 
-      // ========== FIX: Handle Jira and Documentation links properly ==========
       function getValueOrNull(fieldName) {
         const value = formData.get(fieldName);
         
-        // For Jira and Documentation links, always return a string
         if (fieldName === 'jira_link' || fieldName === 'documentation_link') {
           if (!value || value.trim() === '') {
             return 'NA';
           }
-          // If value is "NA" or "N/A", keep it as "NA"
           if (value.trim().toUpperCase() === 'NA' || value.trim().toUpperCase() === 'N/A') {
             return 'NA';
           }
           return value.trim();
         }
         
-        // For other fields, return null if empty
         if (!value || value.trim() === '') {
           return null;
         }
         return value.trim();
       }
+
+      // ========== WORKSPACE: Use hidden field value ==========
+      const workspaceValue = workspaceHidden.value;
 
       const data = {
         name: formData.get('name') || '',
@@ -1323,6 +1409,7 @@
         documentation_link: getValueOrNull('documentation_link'),
         data_sources: formData.get('data_sources') || '',
         technical_details: formData.get('technical_details') || '',
+        workspace: workspaceValue,
         terms_accepted: document.getElementById('terms-checkbox').checked,
         terms_version: termsVersion
       };
@@ -1330,7 +1417,6 @@
       const url = isEdit ? `/api/projects/${projectId}` : '/api/projects';
       const method = isEdit ? 'PATCH' : 'POST';
 
-      // Show spinner
       submitBtn.disabled = true;
       btnText.textContent = isEdit ? 'Saving...' : 'Registering...';
       btnSpinner.style.display = 'inline-block';
@@ -1372,7 +1458,14 @@
         }, 800);
 
       } catch (error) {
-        showToast(error.message, 'error', 'Error');
+        // ========== FIX: Don't show toast for 422 validation errors ==========
+        // Check if it's a 422 error (validation error from server)
+        if (error.message && error.message.includes('422')) {
+          // Show in error summary instead
+          showErrorSummary([{ field: 'Server Validation', message: error.message }]);
+        } else {
+          showToast(error.message, 'error', 'Error');
+        }
         
         submitBtn.disabled = false;
         btnText.textContent = isEdit ? 'Save changes' : 'Register and get project ID';

@@ -23,6 +23,10 @@ def _context(request: Request, **values: Any) -> dict[str, Any]:
     actor = actor_from_request(request)
     service = _service(request)
     auth = service.authorization
+    
+    # ========== WORKSPACE: ADDED ==========
+    available_workspaces = service.get_available_workspaces()
+    
     return {
         "request": request,
         "actor": actor,
@@ -31,6 +35,7 @@ def _context(request: Request, **values: Any) -> dict[str, Any]:
         "is_admin": auth.is_admin(actor),
         "is_approver": auth.is_approver(actor),
         "is_auditor": auth.is_auditor(actor),
+        "available_workspaces": available_workspaces,  # ========== WORKSPACE: ADDED ==========
         **values,
     }
 
@@ -106,7 +111,10 @@ def project_new(request: Request):
     project_data = {
         "terms_accepted": False,
         "terms_up_to_date": False,
-        "terms_version": service.settings.current_terms_version
+        "terms_version": service.settings.current_terms_version,
+        "workspace": "",  # ========== WORKSPACE: ADDED ==========
+        "from_workspace": "",  # ========== WORKSPACE: ADDED ==========
+        "to_workspace": "",  # ========== WORKSPACE: ADDED ==========
     }
     return templates.TemplateResponse(
         request,

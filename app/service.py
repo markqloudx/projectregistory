@@ -138,6 +138,10 @@ class RegistryService:
 
         self._validate_project_options(payload.team_name, payload.data_classification)
         now = utc_now()
+        
+        # ========== WORKSPACE: Use payload.workspace ==========
+        workspace_value = payload.workspace or self.settings.workspace_route
+        
         record = {
             "project_id": generate_project_id(),
             "name": payload.name,
@@ -149,7 +153,7 @@ class RegistryService:
             "created_by": actor.normalized,
             "updated_at": now,
             "updated_by": actor.normalized,
-            "workspace": self.settings.workspace_route,
+            "workspace": workspace_value,  # ========== WORKSPACE: Updated ==========
             "data_classification": payload.data_classification,
             "go_live_date": payload.go_live_date,
             "documentation_link": payload.documentation_link,
@@ -172,7 +176,7 @@ class RegistryService:
             payload={
                 "name": payload.name,
                 "team_name": payload.team_name,
-                "workspace": self.settings.workspace_route,
+                "workspace": workspace_value,  # ========== WORKSPACE: Updated ==========
                 "dev_catalog": self.settings.dev_catalog,
                 "prod_catalog": self.settings.prod_catalog,
                 "terms_version": current_terms_version,
@@ -1086,6 +1090,43 @@ class RegistryService:
         self.authorization.require_auditor(actor)
         return self.database.list_audit(limit)
 
+    # ========== WORKSPACE: ADDED METHOD ==========
+    # ========== WORKSPACE: ADDED METHOD ==========
+# ========== WORKSPACE: ADDED METHOD ==========
+   # ========== WORKSPACE: ADDED METHOD ==========
+    def get_available_workspaces(self) -> list[str]:
+        """Get list of available workspace names (not routes)"""
+        try:
+            # Query workspaces from system table
+            rows = self.database._fetchall("""
+                SELECT 
+                    workspace_name
+                FROM system.access.workspaces_latest
+                WHERE status = 'RUNNING'
+                ORDER BY workspace_name
+            """)
+            
+            workspaces = []
+            for row in rows:
+                if row.get("workspace_name"):
+                    workspaces.append(str(row["workspace_name"]))
+            
+            # If no workspaces found, fallback to config
+            if not workspaces:
+                workspaces = [
+                    self.settings.dev_workspace_name,
+                    self.settings.prod_workspace_name
+                ]
+            
+            return workspaces
+            
+        except Exception as e:
+            # Fallback to config if system table fails
+            print(f"Error fetching workspaces from system table: {e}")
+            return [
+                self.settings.dev_workspace_name,
+                self.settings.prod_workspace_name
+            ]
     # Internal helpers ----------------------------------------------------------
     def _validate_project_options(self, team_name: str, data_classification: str) -> None:
         if self.settings.teams and team_name not in self.settings.teams:

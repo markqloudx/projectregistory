@@ -57,6 +57,7 @@ class ProjectCreate(StrictModel):
     technical_details: str = ""
     jira_link: str = ""
     business_owner_email: str
+    workspace: str = ""  # ========== WORKSPACE: ADDED ==========
     # ========== TERMS AND CONDITIONS - ADD THESE 2 LINES ==========
     terms_accepted: bool = Field(..., description="Must be True to accept terms")
     terms_version: str = Field(..., description="Version of terms accepted")
@@ -105,6 +106,7 @@ class ProjectUpdate(StrictModel):
     technical_details: str | None = None
     jira_link: str | None = None
     business_owner_email: str | None = None
+    workspace: str | None = None  # ========== WORKSPACE: ADDED ==========
     # ========== TERMS AND CONDITIONS - ADD THESE 2 LINES ==========
     terms_accepted: bool | None = Field(None, description="Must be True to accept terms")
     terms_version: str | None = Field(None, description="Version of terms accepted")

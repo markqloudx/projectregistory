@@ -7,6 +7,7 @@
 
 <section class="identity-grid">
   <article class="panel"><h2>Project identity</h2><dl>
+    <!-- ========== WORKSPACE: REMOVED from left panel ========== -->
     <div><dt>Status</dt><dd><span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span></dd></div>
     <div><dt>Team</dt><dd>{{ project.team_name }}</dd></div>
     <div><dt>Technical owner</dt><dd>{{ project.technical_owner_email }}</dd></div>
@@ -14,8 +15,46 @@
     <div><dt>Classification</dt><dd>{{ project.data_classification }}</dd></div>
     <div><dt>Go-live</dt><dd>{{ project.go_live_date or "Not set" }}</dd></div>
   </dl></article>
-  <article class="panel route-card"><h2>Fixed environment route</h2>
-    <div class="route"><span><small>Development</small><strong>{{ settings.dev_workspace_name }}</strong><code>{{ settings.dev_catalog }}</code></span><b>→</b><span><small>Production</small><strong>{{ settings.prod_workspace_name }}</strong><code>{{ settings.prod_catalog }}</code></span></div>
+  
+  <article class="panel route-card">
+    <h2>Fixed environment route</h2>
+    
+    <!-- ========== WORKSPACE: Show From/To in right panel ========== -->
+    <!-- {% if project.workspace and ' to ' in project.workspace %}
+      {% set parts = project.workspace.split(' to ') %}
+      <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div>
+            <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">From</small>
+            <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[0]|trim }}</span>
+          </div>
+          <span style="font-size: 1.2rem; color: var(--accent);">→</span>
+          <div>
+            <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">To</small>
+            <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[1]|trim }}</span>
+          </div>
+        </div>
+      </div>
+    {% elif project.workspace %}
+      <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
+        <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">Workspace</small>
+        <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ project.workspace }}</span>
+      </div>
+    {% endif %} -->
+    
+    <div class="route">
+      <span>
+        <small>Development</small>
+        <strong>{{ parts[0]|trim }}</strong>
+        <!-- <code>{{ settings.dev_catalog }}</code> -->
+      </span>
+      <b>→</b>
+      <span>
+        <small>Production</small>
+        <strong>{{ parts[1]|trim }}</strong>
+        <!-- <code>{{ settings.prod_catalog }}</code> -->
+      </span>
+    </div>
     <p>Bundle-defined development prefixes are allowed. Governance does not rename assets.</p>
   </article>
 </section>
