@@ -1091,11 +1091,9 @@ class RegistryService:
         return self.database.list_audit(limit)
 
     # ========== WORKSPACE: ADDED METHOD ==========
-    # ========== WORKSPACE: ADDED METHOD ==========
-# ========== WORKSPACE: ADDED METHOD ==========
-   # ========== WORKSPACE: ADDED METHOD ==========
+ # ========== WORKSPACE: ADDED METHOD ==========
     def get_available_workspaces(self) -> list[str]:
-        """Get list of available workspace names (not routes)"""
+        """Get list of available workspace business-aliases (only workspaces with 2 parts)"""
         try:
             # Query workspaces from system table
             rows = self.database._fetchall("""
@@ -1107,26 +1105,36 @@ class RegistryService:
             """)
             
             workspaces = []
+            seen = set()
             for row in rows:
                 if row.get("workspace_name"):
-                    workspaces.append(str(row["workspace_name"]))
+                    name = str(row["workspace_name"])
+                    # Split by '-' and check if exactly 2 parts
+                    parts = name.split('-')
+                    # Only include if exactly 2 parts (e.g., "it-dev" -> ["it", "dev"])
+                    if len(parts) == 2:
+                        base = parts[0]  # Take first part as business-alias
+                        if base and base not in seen:
+                            seen.add(base)
+                            workspaces.append(base)
             
             # If no workspaces found, fallback to config
             if not workspaces:
                 workspaces = [
-                    self.settings.dev_workspace_name,
-                    self.settings.prod_workspace_name
+                    self.settings.dev_workspace_name.split('-')[0],
+                    self.settings.prod_workspace_name.split('-')[0]
                 ]
+                workspaces = list(dict.fromkeys(workspaces))
             
             return workspaces
             
         except Exception as e:
-            # Fallback to config if system table fails
             print(f"Error fetching workspaces from system table: {e}")
-            return [
-                self.settings.dev_workspace_name,
-                self.settings.prod_workspace_name
+            workspaces = [
+                self.settings.dev_workspace_name.split('-')[0],
+                self.settings.prod_workspace_name.split('-')[0]
             ]
+            return list(dict.fromkeys(workspaces))
     # Internal helpers ----------------------------------------------------------
     def _validate_project_options(self, team_name: str, data_classification: str) -> None:
         if self.settings.teams and team_name not in self.settings.teams:

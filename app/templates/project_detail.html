@@ -7,7 +7,6 @@
 
 <section class="identity-grid">
   <article class="panel"><h2>Project identity</h2><dl>
-    <!-- ========== WORKSPACE: REMOVED from left panel ========== -->
     <div><dt>Status</dt><dd><span class="badge {{ project.lifecycle_status|lower }}">{{ project.lifecycle_status }}</span></dd></div>
     <div><dt>Team</dt><dd>{{ project.team_name }}</dd></div>
     <div><dt>Technical owner</dt><dd>{{ project.technical_owner_email }}</dd></div>
@@ -20,25 +19,32 @@
     <h2>Fixed environment route</h2>
     
     <!-- ========== WORKSPACE: Show From/To in right panel ========== -->
-    <!-- {% if project.workspace and ' to ' in project.workspace %}
-      {% set parts = project.workspace.split(' to ') %}
-      <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <div>
-            <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">From</small>
-            <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[0]|trim }}</span>
-          </div>
-          <span style="font-size: 1.2rem; color: var(--accent);">→</span>
-          <div>
-            <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">To</small>
-            <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[1]|trim }}</span>
+    <!-- {% if project.workspace %}
+      {% if ' to ' in project.workspace %}
+        {% set parts = project.workspace.split(' to ') %}
+        <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div>
+              <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">From</small>
+              <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[0]|trim }}</span>
+            </div>
+            <span style="font-size: 1.2rem; color: var(--accent);">→</span>
+            <div>
+              <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">To</small>
+              <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ parts[1]|trim }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    {% elif project.workspace %}
-      <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
+      {% else %}
+        <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border: 1px solid var(--accent-soft-border);">
+          <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">Workspace</small>
+          <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ project.workspace }}</span>
+        </div>
+      {% endif %}
+    {% else %}
+      <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--surface-muted); border-radius: 8px; border: 1px solid var(--border);">
         <small style="color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; display: block;">Workspace</small>
-        <span style="font-weight: 700; color: var(--accent-dark); font-size: 1rem;">{{ project.workspace }}</span>
+        <span style="font-weight: 400; color: var(--muted); font-size: 1rem;">Not set</span>
       </div>
     {% endif %} -->
     
@@ -77,4 +83,159 @@
   </div>
   {% else %}<div class="empty">No production request has been created for this project.</div>{% endif %}
 </section>
+
+<style>
+  .route-card .route {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  
+  .route-card .route > span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 20px;
+    background: var(--surface-muted);
+    border-radius: 14px;
+    flex: 1;
+    border: 1px solid var(--border);
+  }
+  
+  .route-card .route > span small {
+    color: var(--muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  
+  .route-card .route > span strong {
+    font-size: 1.1rem;
+  }
+  
+  .route-card .route > span code {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+  
+  .route-card .route b {
+    font-size: 1.7rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  
+  .route-card p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 8px 0 0;
+  }
+</style>
+
+<script>
+  (function() {
+    'use strict';
+
+    const scanButton = document.getElementById('scan-assets');
+    const results = document.getElementById('scan-results');
+    
+    if (!scanButton) return;
+    
+    const projectId = scanButton.dataset.projectId;
+    
+    function showToast(message, error = false) {
+      const node = document.getElementById('toast');
+      if (!node) return;
+      node.textContent = message;
+      node.className = `toast visible${error ? ' error' : ''}`;
+      window.setTimeout(() => { node.className = 'toast'; }, 5000);
+    }
+    
+    function renderScanResults(scan) {
+      if (!scan.assets || scan.assets.length === 0) {
+        results.innerHTML = '<div class="empty compact">No tagged assets were discovered. Add an asset manually when creating a production request, or verify scanner permissions.</div>';
+        return;
+      }
+      
+      let html = '';
+      scan.assets.forEach(function(asset) {
+        const compliant = asset.compliance_status === 'COMPLIANT';
+        const locator = asset.resource_path || asset.resource_id || 
+                       [asset.catalog_name, asset.schema_name, asset.resource_name].filter(Boolean).join('.');
+        
+        const tags = Object.entries(asset.tags || {})
+          .map(function(entry) { return entry[0] + '=' + entry[1]; })
+          .join(' · ');
+        
+        html += `
+          <div class="asset-table-row">
+            <span>
+              <strong>${escapeHtml(asset.resource_name)}</strong>
+              <small class="block">${escapeHtml(locator)}</small>
+            </span>
+            <span class="asset-type">${escapeHtml(asset.resource_type)}</span>
+            <small>${escapeHtml(tags)}</small>
+            <span class="asset-actions">
+              <span class="badge result-${compliant ? 'pass' : 'fail'}">${escapeHtml(asset.compliance_status)}</span>
+            </span>
+          </div>
+        `;
+      });
+      
+      results.innerHTML = html;
+    }
+    
+    function escapeHtml(value) {
+      if (!value) return '';
+      return String(value).replace(/[&<>'"]/g, function(ch) {
+        const map = {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'};
+        return map[ch] || ch;
+      });
+    }
+    
+    async function apiCall(url, options = {}) {
+      const headers = {'X-Governance-Request': 'v4', ...(options.headers || {})};
+      if (options.body && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, {...options, headers});
+      const payload = response.headers.get('content-type')?.includes('json') ? await response.json() : {};
+      if (!response.ok) {
+        const detail = Array.isArray(payload.detail) ? payload.detail.map(x => x.msg || x).join('; ') : payload.detail;
+        throw new Error([payload.error || 'Request failed', detail].filter(Boolean).join(' — '));
+      }
+      return payload;
+    }
+    
+    scanButton.addEventListener('click', function() {
+      const button = this;
+      const originalText = button.textContent;
+      
+      button.disabled = true;
+      button.textContent = 'Scanning…';
+      
+      apiCall('/api/projects/' + projectId + '/scan', {
+        method: 'POST',
+        body: JSON.stringify({environment: 'dev'})
+      })
+      .then(function(scan) {
+        renderScanResults(scan);
+        showToast('Scanned ' + scan.assets.length + ' assets.');
+      })
+      .catch(function(error) {
+        showToast(error.message, true);
+      })
+      .finally(function() {
+        button.disabled = false;
+        button.textContent = originalText;
+      });
+    });
+    
+  })();
+</script>
 {% endblock %}

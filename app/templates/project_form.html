@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-heading compact">
-  <div><p class="eyebrow">Project identity</p><h1>{{ "Edit project" if project and project.project_id else "Register a project" }}</h1>
-  <p>Repository and deployment settings are intentionally not required during registration.</p></div>
+  <div>
+    <p class="eyebrow">Project identity</p>
+    <h1>{{ "Edit project" if project and project.project_id else "Register a project" }}</h1>
+    <p>Repository and deployment settings are intentionally not required during registration.</p>
+  </div>
 </div>
 
 <!-- ========== ERROR SUMMARY ========== -->
@@ -15,50 +18,57 @@
 
 <form id="project-form" class="panel form-grid" data-project-id="{{ project.project_id if project else '' }}" novalidate>
   
-  <!-- ========== WORKSPACE: FROM DROPDOWN ========== -->
-  <label class="field">
-    <span class="field-label">From Workspace <span class="required">*</span></span>
-    <select name="from_workspace" id="from-workspace" required>
-      <option value="">Select from workspace</option>
+  <!-- ========== WORKSPACE: SINGLE DROPDOWN ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Workspace <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="Select the business unit workspace. This determines the development and production environment route. Example: selecting 'it' creates 'it-dev to it-prod'.">ⓘ</span>
+    </div>
+    <select name="workspace" id="workspace-select" required>
+      <option value="">Select a workspace</option>
       {% for ws in available_workspaces %}
-        <option value="{{ ws }}" {% if project and project.from_workspace == ws %}selected{% endif %}>
+        {% set selected = false %}
+        {% if project and project.workspace %}
+          {% set workspace_parts = project.workspace.split(' to ') %}
+          {% if workspace_parts|length > 0 %}
+            {% set workspace_alias = workspace_parts[0].replace('-dev', '').replace('-prod', '') %}
+            {% if workspace_alias == ws %}
+              {% set selected = true %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        <option value="{{ ws }}" {% if selected %}selected{% endif %}>
           {{ ws }}
         </option>
       {% endfor %}
     </select>
-    <span class="field-error" data-for="from_workspace"></span>
-  </label>
-  
-  <!-- ========== WORKSPACE: TO DROPDOWN ========== -->
-  <label class="field">
-    <span class="field-label">To Workspace <span class="required">*</span></span>
-    <select name="to_workspace" id="to-workspace" required>
-      <option value="">Select to workspace</option>
-      {% for ws in available_workspaces %}
-        <option value="{{ ws }}" {% if project and project.to_workspace == ws %}selected{% endif %}>
-          {{ ws }}
-        </option>
-      {% endfor %}
-    </select>
-    <span class="field-error" data-for="to_workspace"></span>
-  </label>
-  
-  <!-- ========== HIDDEN FIELD for combined workspace ========== -->
-  <input type="hidden" name="workspace" id="workspace-hidden" value="{{ project.workspace if project else '' }}">
-  
-  <!-- ========== DISPLAY COMBINED WORKSPACE ========== -->
-  <div class="field span-2" id="workspace-display" style="display: none; padding: 8px 0; font-size: 0.9rem; color: var(--muted);">
-    <strong>Workspace Route:</strong> <span id="workspace-route-display" style="font-weight: 600; color: var(--accent);"></span>
+    <span class="field-error" data-for="workspace"></span>
+    <div class="field-hint">Select the business unit workspace (e.g., it, operations, platform)</div>
   </div>
   
-  <label class="field span-2">
-    <span class="field-label">Project name <span class="required">*</span></span>
+  <!-- ========== WORKSPACE ROUTE DISPLAY ========== -->
+  <div class="field span-2" id="workspace-display" style="display: none; padding: 6px 0; font-size: 0.9rem; color: var(--muted);">
+    <span style="color: var(--muted);">Workspace Route:</span> 
+    <span id="workspace-route-display" style="font-weight: 600; color: var(--accent);"></span>
+  </div>
+  
+  <!-- ========== PROJECT NAME ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Project name <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="Enter a descriptive name for your project. This will be used as the display name throughout the system.">ⓘ</span>
+    </div>
     <input name="name" required maxlength="200" value="{{ project.name if project else '' }}" placeholder="Enter project name">
     <span class="field-error" data-for="name"></span>
-  </label>
+    <div class="field-hint">Max 200 characters. Use a clear, descriptive name.</div>
+  </div>
   
-  <label class="field">
-    <span class="field-label">Team <span class="required">*</span></span>
+  <!-- ========== TEAM ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Team <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="Select the team responsible for this project. This determines deployment permissions.">ⓘ</span>
+    </div>
     <select name="team_name" required>
       <option value="">Select a team</option>
       {% for team in settings.teams %}
@@ -69,10 +79,15 @@
       {% endif %}
     </select>
     <span class="field-error" data-for="team_name"></span>
-  </label>
+    <div class="field-hint">Select the team that owns this project.</div>
+  </div>
   
-  <label class="field">
-    <span class="field-label">Data classification <span class="required">*</span></span>
+  <!-- ========== DATA CLASSIFICATION ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Data classification <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="Classify the sensitivity of data used in this project. Affects security controls.">ⓘ</span>
+    </div>
     <select name="data_classification" required>
       <option value="">Select classification</option>
       {% for item in settings.data_classifications %}
@@ -80,65 +95,107 @@
       {% endfor %}
     </select>
     <span class="field-error" data-for="data_classification"></span>
-  </label>
+    <div class="field-hint">Choose the appropriate data sensitivity level.</div>
+  </div>
   
-  <label class="field">
-    <span class="field-label">Technical owner <span class="required">*</span></span>
+  <!-- ========== TECHNICAL OWNER ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Technical owner <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="The technical owner is responsible for implementation and technical decisions.">ⓘ</span>
+    </div>
     <input type="email" name="technical_owner_email" required value="{{ project.technical_owner_email if project else actor.subject }}" placeholder="email@company.com">
     <span class="field-error" data-for="technical_owner_email"></span>
-  </label>
+    <div class="field-hint">Enter the email address of the technical owner.</div>
+  </div>
   
-  <label class="field">
-    <span class="field-label">Business owner <span class="required">*</span></span>
+  <!-- ========== BUSINESS OWNER ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Business owner <span class="required">*</span></span>
+      <span class="help-icon" data-tooltip="The business owner defines business requirements and approves major decisions.">ⓘ</span>
+    </div>
     <input type="email" name="business_owner_email" required value="{{ project.business_owner_email if project else '' }}" placeholder="email@company.com">
     <span class="field-error" data-for="business_owner_email"></span>
-  </label>
+    <div class="field-hint">Enter the email address of the business owner.</div>
+  </div>
   
-  <label class="field span-2">
-    <span class="field-label">Description</span>
+  <!-- ========== DESCRIPTION ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Description</span>
+      <span class="help-icon" data-tooltip="Provide a brief description of the project's purpose, scope, and expected outcomes.">ⓘ</span>
+    </div>
     <textarea name="description" rows="3" placeholder="Brief description of the project">{{ project.description if project else '' }}</textarea>
     <span class="field-error" data-for="description"></span>
-  </label>
+    <div class="field-hint">Describe the project's purpose and scope.</div>
+  </div>
   
-  <label class="field">
-    <span class="field-label">Planned go-live date <span class="date-hint">(Today or future)</span></span>
+  <!-- ========== GO-LIVE DATE ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Planned go-live date <span class="date-hint">(Today or future)</span></span>
+      <span class="help-icon" data-tooltip="Select the planned date when this project will go live in production.">ⓘ</span>
+    </div>
     <input type="date" name="go_live_date" id="go-live-date" 
            value="{{ project.go_live_date if project and project.go_live_date else today_date }}"
            min="{{ today_date }}">
     <span class="field-error" data-for="go_live_date"></span>
-  </label>
+    <div class="field-hint">Select a date today or in the future.</div>
+  </div>
   
-  <!-- ========== JIRA LINK - Default "NA" ========== -->
-  <label class="field">
-    <span class="field-label">Jira / change link</span>
+  <!-- ========== JIRA LINK ========== -->
+  <div class="field">
+    <div class="field-header">
+      <span class="field-label">Jira / change link</span>
+      <span class="help-icon" data-tooltip="Link to the Jira ticket or change request associated with this project.">ⓘ</span>
+    </div>
     <input type="text" name="jira_link" placeholder="https://jira.company.com/browse/PROJ-123" 
            value="{% if project and project.jira_link %}{{ project.jira_link }}{% else %}NA{% endif %}">
     <span class="field-error" data-for="jira_link"></span>
-  </label>
+    <div class="field-hint">Enter the Jira URL or type "NA" if not applicable.</div>
+  </div>
   
-  <!-- ========== DOCUMENTATION LINK - Default "NA" ========== -->
-  <label class="field span-2">
-    <span class="field-label">Documentation link</span>
+  <!-- ========== DOCUMENTATION LINK ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Documentation link</span>
+      <span class="help-icon" data-tooltip="Link to the project documentation, architecture diagrams, or design documents.">ⓘ</span>
+    </div>
     <input type="text" name="documentation_link" placeholder="https://docs.company.com/project" 
            value="{% if project and project.documentation_link %}{{ project.documentation_link }}{% else %}NA{% endif %}">
     <span class="field-error" data-for="documentation_link"></span>
-  </label>
+    <div class="field-hint">Enter the documentation URL or type "NA" if not applicable.</div>
+  </div>
   
-  <label class="field span-2">
-    <span class="field-label">Data sources</span>
+  <!-- ========== DATA SOURCES ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Data sources</span>
+      <span class="help-icon" data-tooltip="Describe upstream data sources, dependencies, and data flow for this project.">ⓘ</span>
+    </div>
     <textarea name="data_sources" rows="3" placeholder="Describe upstream sources and shared dependencies">{{ project.data_sources if project else '' }}</textarea>
     <span class="field-error" data-for="data_sources"></span>
-  </label>
+    <div class="field-hint">List upstream sources and dependencies.</div>
+  </div>
   
-  <label class="field span-2">
-    <span class="field-label">Technical details</span>
+  <!-- ========== TECHNICAL DETAILS ========== -->
+  <div class="field span-2">
+    <div class="field-header">
+      <span class="field-label">Technical details</span>
+      <span class="help-icon" data-tooltip="Provide architecture details, schedules, support contacts, or any other technical notes.">ⓘ</span>
+    </div>
     <textarea name="technical_details" rows="4" placeholder="Architecture, schedules, support details, or other notes">{{ project.technical_details if project else '' }}</textarea>
     <span class="field-error" data-for="technical_details"></span>
-  </label>
+    <div class="field-hint">Add any technical notes, architecture details, or support information.</div>
+  </div>
 
   <!-- ========== TERMS AND CONDITIONS ========== -->
   <div class="field span-2 terms-section">
-    <h3>Terms and Conditions</h3>
+    <div class="terms-header">
+      <h3>Terms and Conditions</h3>
+      <span class="help-icon" data-tooltip="Review and accept the terms and conditions to proceed. These ensure compliance with data governance policies.">ⓘ</span>
+    </div>
     <div class="terms-content">
       <div class="terms-list">
         <div class="term-item">
@@ -188,32 +245,47 @@
   <div class="form-actions span-2">
     <a class="button secondary" href="{{ '/projects/' ~ project.project_id if project else '/projects' }}">Cancel</a>
     <button class="button primary" type="submit" id="submit-btn">
-      <span class="btn-text">{{ "Save changes" if project else "Register and get project ID" }}</span>
+      <span class="btn-text">{{ "Save changes" if project and project.project_id else "Register and get project ID" }}</span>
       <span class="btn-spinner" style="display: none;">⏳</span>
     </button>
   </div>
 </form>
 
+<!-- ========== SUBMIT LOADER ========== -->
+<div id="submit-loader" style="display: none;">
+  <div class="loader-overlay">
+    <div class="loader-box">
+      <div class="loader-spinner">
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+      </div>
+      <div class="loader-title">{{ "Saving project..." if project and project.project_id else "Registering project..." }}</div>
+      <div class="loader-subtitle">Please wait, this may take a moment</div>
+      <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+    </div>
+  </div>
+</div>
+
 <!-- ========== PAGE LOADER ========== -->
 <div id="page-loader" style="display: none;">
   <div class="loader-overlay">
-    <div class="loader-container">
+    <div class="loader-box">
       <div class="loader-spinner">
-        <div class="spinner-ring"></div>
-        <div class="spinner-ring"></div>
-        <div class="spinner-ring"></div>
-        <div class="spinner-ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
       </div>
-      <div class="loader-text">Loading<span class="loader-dots">...</span></div>
-      <div class="loader-progress">
-        <div class="progress-bar"></div>
-      </div>
+      <div class="loader-title">Loading<span class="loader-dots"></span></div>
+      <div class="loader-bar"><div class="loader-bar-fill"></div></div>
     </div>
   </div>
 </div>
 
 <style>
-  /* ========== ERROR SUMMARY STYLES ========== */
+  /* ========== ERROR SUMMARY ========== */
   .error-summary {
     background: #fff8f8;
     border: 2px solid #d32f2f;
@@ -250,13 +322,18 @@
     color: #d32f2f;
   }
 
-  /* ========== FIELD LABELS ========== */
+  /* ========== FIELD HEADER ========== */
+  .field-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
   .field-label {
-    display: block;
     font-weight: 600;
     font-size: 0.875rem;
     color: #1a1a1a;
-    margin-bottom: 4px;
   }
   
   .required {
@@ -267,19 +344,120 @@
   .date-hint {
     font-size: 0.7rem;
     font-weight: 400;
-    color: #6c7a8a;
+    color: #8a8f98;
     margin-left: 4px;
+  }
+
+  .field-hint {
+    font-size: 0.75rem;
+    color: #8a8f98;
+    margin-top: 4px;
+    font-weight: 400;
+    padding: 2px 0;
+  }
+
+  /* ========== HELP ICON ========== */
+  .help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 50%;
+    background: #eef2f7;
+    color: #4a6a8a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    user-select: none;
+    border: none;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+
+  .help-icon:hover {
+    background: #c8102e;
+    color: #fff;
+    transform: scale(1.1);
+  }
+
+  .help-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: normal;
+    max-width: 340px;
+    min-width: 200px;
+    text-align: left;
+    line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    z-index: 100;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .help-icon::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1a1a1a;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s ease;
+    z-index: 100;
+  }
+
+  .help-icon:hover::after,
+  .help-icon:hover::before {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .terms-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .terms-header h3 {
+    margin: 0;
+    color: #1a1a1a;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .terms-header .help-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
   }
 
   /* ========== INPUT FIELDS ========== */
   input, select, textarea {
     width: 100%;
-    padding: 12px 16px;
+    padding: 10px 14px;
     font-size: 0.95rem;
     font-family: inherit;
     color: #1a1a1a;
     background: #ffffff;
-    border: 2px solid #d0d7de;
+    border: 2px solid #dce1e8;
     border-radius: 8px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     outline: none;
@@ -287,15 +465,15 @@
 
   input:focus, select:focus, textarea:focus {
     border-color: #c8102e;
-    box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.12);
+    box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.10);
   }
 
   input:hover, select:hover, textarea:hover {
-    border-color: #b0b8c0;
+    border-color: #b8c0ca;
   }
 
   input::placeholder, textarea::placeholder {
-    color: #8a8f98;
+    color: #aab2bc;
   }
 
   /* ========== DATE VALIDATION ========== */
@@ -304,7 +482,7 @@
   }
 
   input[type="date"]:valid:focus {
-    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.12);
+    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.10);
   }
 
   input[type="date"]:invalid:not(:placeholder-shown) {
@@ -313,7 +491,7 @@
   }
 
   input[type="date"]:invalid:not(:placeholder-shown):focus {
-    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.12);
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.10);
   }
 
   /* ========== ERROR STATES ========== */
@@ -327,17 +505,20 @@
   .field.error input:focus,
   .field.error select:focus,
   .field.error textarea:focus {
-    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.12);
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.10);
+  }
+
+  .field.error .field-hint {
+    color: #d32f2f;
   }
 
   .field-error {
     display: none;
     font-size: 0.8rem;
     color: #d32f2f;
-    margin-top: 6px;
+    margin-top: 4px;
     padding: 4px 0;
     font-weight: 500;
-    min-height: 20px;
   }
 
   .field-error.visible {
@@ -346,19 +527,13 @@
   }
 
   @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* ========== TERMS SECTION ========== */
   .terms-section {
-    background: #f8f9fa;
+    background: #f8fafc;
     border: 2px solid #e8edf2;
     border-radius: 12px;
     padding: 24px 28px;
@@ -369,13 +544,6 @@
   .terms-section.error {
     border-color: #d32f2f;
     background: #fff8f8;
-  }
-
-  .terms-section h3 {
-    margin: 0 0 16px 0;
-    color: #1a1a1a;
-    font-size: 1.1rem;
-    font-weight: 700;
   }
 
   .terms-content {
@@ -430,13 +598,13 @@
     padding: 14px 16px;
     background: white;
     border-radius: 8px;
-    border: 2px solid #d0d7de;
+    border: 2px solid #dce1e8;
     cursor: pointer;
     transition: border-color 0.2s ease, background 0.2s ease;
   }
 
   .checkbox-label:hover {
-    border-color: #b0b8c0;
+    border-color: #b8c0ca;
     background: #fafbfc;
   }
 
@@ -522,17 +690,17 @@
   .button.primary {
     background: #c8102e;
     color: white;
-    box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+    box-shadow: 0 4px 12px rgba(200, 16, 46, 0.25);
   }
 
   .button.primary:hover:not(:disabled) {
     background: #a00d25;
-    box-shadow: 0 6px 16px rgba(200, 16, 46, 0.4);
+    box-shadow: 0 6px 16px rgba(200, 16, 46, 0.35);
     transform: translateY(-1px);
   }
 
   .button.primary:disabled {
-    opacity: 0.7;
+    opacity: 0.6;
     cursor: not-allowed;
   }
 
@@ -544,7 +712,7 @@
 
   .button.secondary:hover {
     background: #e4e7ec;
-    border-color: #d0d7de;
+    border-color: #dce1e8;
   }
 
   .btn-spinner {
@@ -557,7 +725,7 @@
     to { transform: rotate(360deg); }
   }
 
-  /* ========== TOAST NOTIFICATIONS ========== */
+  /* ========== TOAST ========== */
   .toast-container {
     position: fixed;
     top: 24px;
@@ -578,7 +746,7 @@
     border-radius: 10px;
     background: #1a1a1a;
     color: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
     transform: translateX(calc(100% + 24px));
     opacity: 0;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -624,7 +792,7 @@
   .toast-close {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255,255,255,0.6);
     font-size: 1.2rem;
     cursor: pointer;
     padding: 0 4px;
@@ -639,7 +807,7 @@
      ========== LOADER STYLES ==========
      ================================================================ */
 
-  #page-loader {
+  #page-loader, #submit-loader {
     position: fixed;
     top: 0;
     left: 0;
@@ -647,14 +815,14 @@
     height: 100%;
     z-index: 99999;
     display: none;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     animation: fadeIn 0.3s ease;
   }
 
-  #page-loader.show {
-    display: block !important;
+  #page-loader.show, #submit-loader.show {
+    display: flex !important;
   }
 
   @keyframes fadeIn {
@@ -662,81 +830,72 @@
     to { opacity: 1; }
   }
 
-  .loader-container {
+  .loader-overlay {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loader-box {
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 20px;
+    padding: 48px 56px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    min-width: 280px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 48px 56px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    min-width: 280px;
+    text-align: center;
     animation: scaleIn 0.3s ease;
   }
 
   @keyframes scaleIn {
-    from {
-      transform: translate(-50%, -50%) scale(0.8);
-      opacity: 0;
-    }
-    to {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
-    }
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
 
   .loader-spinner {
     position: relative;
-    width: 80px;
-    height: 80px;
-    margin-bottom: 24px;
+    width: 70px;
+    height: 70px;
+    margin-bottom: 20px;
   }
 
-  .spinner-ring {
+  .ring {
     position: absolute;
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 4px solid transparent;
+    border: 3.5px solid transparent;
     animation: spinRing 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   }
 
-  .spinner-ring:nth-child(1) {
-    border-top-color: #c8102e;
-    animation-delay: -0.45s;
-  }
-
-  .spinner-ring:nth-child(2) {
-    border-right-color: #e74c3c;
-    animation-delay: -0.3s;
-  }
-
-  .spinner-ring:nth-child(3) {
-    border-bottom-color: #f39c12;
-    animation-delay: -0.15s;
-  }
-
-  .spinner-ring:nth-child(4) {
-    border-left-color: #2ecc71;
-    animation-delay: 0s;
-  }
+  .ring:nth-child(1) { border-top-color: #c8102e; animation-delay: -0.45s; }
+  .ring:nth-child(2) { border-right-color: #e74c3c; animation-delay: -0.3s; }
+  .ring:nth-child(3) { border-bottom-color: #f39c12; animation-delay: -0.15s; }
+  .ring:nth-child(4) { border-left-color: #2ecc71; animation-delay: 0s; }
 
   @keyframes spinRing {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
 
-  .loader-text {
-    font-size: 1.1rem;
+  .loader-title {
+    font-size: 1.05rem;
     font-weight: 600;
     color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+
+  .loader-subtitle {
+    font-size: 0.85rem;
+    color: #8a8f98;
     margin-bottom: 16px;
-    letter-spacing: 0.5px;
   }
 
   .loader-dots {
@@ -752,15 +911,15 @@
     100% { content: ""; }
   }
 
-  .loader-progress {
-    width: 200px;
-    height: 4px;
+  .loader-bar {
+    width: 180px;
+    height: 3px;
     background: #e8edf2;
     border-radius: 4px;
     overflow: hidden;
   }
 
-  .progress-bar {
+  .loader-bar-fill {
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #c8102e, #e74c3c, #f39c12);
@@ -769,101 +928,30 @@
   }
 
   @keyframes progress {
-    0% { width: 0%; transform: translateX(0); }
-    50% { width: 70%; transform: translateX(0); }
-    100% { width: 100%; transform: translateX(0); }
-  }
-
-  .loader-container::after {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: 22px;
-    background: linear-gradient(45deg, #c8102e, #e74c3c, #f39c12, #c8102e);
-    background-size: 300% 300%;
-    z-index: -1;
-    animation: pulseBorder 3s ease infinite;
-  }
-
-  @keyframes pulseBorder {
-    0% { background-position: 0% 50%; opacity: 0.3; }
-    50% { background-position: 100% 50%; opacity: 0.8; }
-    100% { background-position: 0% 50%; opacity: 0.3; }
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
   }
 
   /* ========== RESPONSIVE ========== */
   @media (max-width: 768px) {
-    .terms-section {
-      padding: 16px 18px;
-    }
-
-    .terms-content {
-      max-height: 200px;
-      padding: 12px 14px;
-    }
-
-    .term-item {
-      font-size: 0.82rem;
-    }
-
-    .checkbox-label {
-      padding: 10px 12px;
-    }
-
-    .checkbox-text {
-      font-size: 0.85rem;
-    }
-
-    .form-actions {
-      flex-direction: column-reverse;
-    }
-
-    .form-actions .button {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .toast-container {
-      right: 16px;
-      left: 16px;
-      max-width: none;
-      top: 16px;
-    }
-
-    .loader-container {
-      padding: 32px 24px;
-      min-width: 200px;
-      margin: 0 16px;
-    }
-
-    .loader-spinner {
-      width: 60px;
-      height: 60px;
-    }
-
-    .loader-text {
-      font-size: 0.95rem;
-    }
-
-    .loader-progress {
-      width: 150px;
-    }
+    .terms-section { padding: 16px 18px; }
+    .terms-content { max-height: 200px; padding: 12px 14px; }
+    .term-item { font-size: 0.82rem; }
+    .checkbox-label { padding: 10px 12px; }
+    .checkbox-text { font-size: 0.85rem; }
+    .form-actions { flex-direction: column-reverse; }
+    .form-actions .button { width: 100%; justify-content: center; }
+    .toast-container { right: 16px; left: 16px; max-width: none; top: 16px; }
+    .loader-box { padding: 32px 24px; min-width: 200px; margin: 0 16px; }
+    .loader-spinner { width: 55px; height: 55px; }
+    .loader-title { font-size: 0.95rem; }
+    .loader-bar { width: 140px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    * {
-      transition: none !important;
-      animation: none !important;
-    }
-    
-    #page-loader {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
-    
-    .loader-container::after {
-      display: none;
-    }
+    * { transition: none !important; animation: none !important; }
+    #page-loader, #submit-loader { backdrop-filter: none; -webkit-backdrop-filter: none; }
   }
 </style>
 
@@ -881,17 +969,34 @@
     const errorSummary = document.getElementById('error-summary');
     const errorList = document.getElementById('error-list');
     const pageLoader = document.getElementById('page-loader');
+    const submitLoader = document.getElementById('submit-loader');
     
-    // ========== WORKSPACE: Get elements ==========
-    const fromWorkspace = document.getElementById('from-workspace');
-    const toWorkspace = document.getElementById('to-workspace');
-    const workspaceHidden = document.getElementById('workspace-hidden');
+    const workspaceSelect = document.getElementById('workspace-select');
     const workspaceRouteDisplay = document.getElementById('workspace-route-display');
     const workspaceDisplay = document.getElementById('workspace-display');
 
+    function getWorkspaceRoute(selectedValue) {
+      if (!selectedValue) return '';
+      let base = selectedValue;
+      if (base.endsWith('-dev') || base.endsWith('-prod')) {
+        base = base.replace('-dev', '').replace('-prod', '');
+      }
+      return base + '-dev to ' + base + '-prod';
+    }
+
     // ============================================================
-    // Show/Hide Page Loader
+    // Loader Controls
     // ============================================================
+    function showSubmitLoader() {
+      submitLoader.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function hideSubmitLoader() {
+      submitLoader.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
     function showPageLoader() {
       pageLoader.classList.add('show');
       document.body.style.overflow = 'hidden';
@@ -909,84 +1014,43 @@
     showPageLoader();
 
     // ============================================================
-    // WORKSPACE: Update hidden field and display
+    // Workspace Functions
     // ============================================================
-    function updateWorkspaceHidden() {
-      const fromVal = fromWorkspace.value;
-      const toVal = toWorkspace.value;
-      if (fromVal && toVal) {
-        const combined = fromVal + ' to ' + toVal;
-        workspaceHidden.value = combined;
-        workspaceRouteDisplay.textContent = combined;
+    function updateWorkspaceDisplay() {
+      const selected = workspaceSelect.value;
+      if (selected) {
+        const route = getWorkspaceRoute(selected);
+        workspaceRouteDisplay.textContent = route;
         workspaceDisplay.style.display = 'block';
       } else {
-        workspaceHidden.value = '';
         workspaceRouteDisplay.textContent = '';
         workspaceDisplay.style.display = 'none';
       }
     }
 
-    function filterDropdowns() {
-      const fromVal = fromWorkspace.value;
-      const toVal = toWorkspace.value;
-      
-      // Filter "To" dropdown - remove the selected "From" value
-      Array.from(toWorkspace.options).forEach(opt => {
-        if (opt.value && opt.value === fromVal) {
-          opt.style.display = 'none';
-        } else {
-          opt.style.display = '';
-        }
-      });
-      
-      // Filter "From" dropdown - remove the selected "To" value
-      Array.from(fromWorkspace.options).forEach(opt => {
-        if (opt.value && opt.value === toVal) {
-          opt.style.display = 'none';
-        } else {
-          opt.style.display = '';
-        }
-      });
-      
-      updateWorkspaceHidden();
-    }
+    workspaceSelect.addEventListener('change', updateWorkspaceDisplay);
 
     // ============================================================
-    // WORKSPACE: Event listeners
-    // ============================================================
-    fromWorkspace.addEventListener('change', filterDropdowns);
-    toWorkspace.addEventListener('change', filterDropdowns);
-
-    // ============================================================
-    // Set initial state for edit mode
+    // Set initial workspace for edit mode
     // ============================================================
     function setInitialWorkspace() {
-      const workspace = workspaceHidden.value;
-      if (workspace && workspace.includes(' to ')) {
-        const parts = workspace.split(' to ');
+      const savedWorkspace = '{{ project.workspace if project else '' }}';
+      if (savedWorkspace) {
+        const parts = savedWorkspace.split(' to ');
         if (parts.length === 2) {
-          // Set from workspace
-          let fromExists = false;
-          Array.from(fromWorkspace.options).forEach(opt => {
-            if (opt.value === parts[0]) fromExists = true;
+          const base = parts[0].replace('-dev', '').replace('-prod', '');
+          Array.from(workspaceSelect.options).forEach(opt => {
+            if (opt.value === base || opt.value.replace('-dev', '').replace('-prod', '') === base) {
+              workspaceSelect.value = opt.value;
+            }
           });
-          if (fromExists) fromWorkspace.value = parts[0];
-          
-          // Set to workspace
-          let toExists = false;
-          Array.from(toWorkspace.options).forEach(opt => {
-            if (opt.value === parts[1]) toExists = true;
-          });
-          if (toExists) toWorkspace.value = parts[1];
-          
-          filterDropdowns();
-          updateWorkspaceHidden();
         }
+        updateWorkspaceDisplay();
       }
     }
 
     // ============================================================
-    // Set min date to today and default value
+    // Date Functions
     // ============================================================
     function setDateDefaults() {
       if (dateInput) {
@@ -1007,7 +1071,7 @@
     setDateDefaults();
 
     // ============================================================
-    // Date validation
+    // Validation Functions
     // ============================================================
     function validateDate(field) {
       const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
@@ -1021,19 +1085,11 @@
         fieldWrapper.classList.remove('error');
       }
 
-      if (!field.value) {
-        return true;
-      }
+      if (!field.value) return true;
 
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(field.value)) {
-        if (errorEl) {
-          errorEl.textContent = 'Please enter a valid date in YYYY-MM-DD format.';
-          errorEl.classList.add('visible');
-        }
-        if (fieldWrapper) {
-          fieldWrapper.classList.add('error');
-        }
+        showFieldError(field, 'Please enter a valid date in YYYY-MM-DD format.');
         return false;
       }
 
@@ -1043,13 +1099,7 @@
       const day = parseInt(parts[2], 10);
 
       if (parts[0].length !== 4 || year < 1900 || year > 2100) {
-        if (errorEl) {
-          errorEl.textContent = 'Please enter a valid year between 1900 and 2100.';
-          errorEl.classList.add('visible');
-        }
-        if (fieldWrapper) {
-          fieldWrapper.classList.add('error');
-        }
+        showFieldError(field, 'Please enter a valid year between 1900 and 2100.');
         return false;
       }
 
@@ -1057,47 +1107,24 @@
       if (selectedDate.getFullYear() !== year || 
           selectedDate.getMonth() !== month || 
           selectedDate.getDate() !== day) {
-        if (errorEl) {
-          errorEl.textContent = 'Please enter a valid date (e.g., 2025-12-31).';
-          errorEl.classList.add('visible');
-        }
-        if (fieldWrapper) {
-          fieldWrapper.classList.add('error');
-        }
+        showFieldError(field, 'Please enter a valid date (e.g., 2025-12-31).');
         return false;
       }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (selectedDate < today) {
-        if (errorEl) {
-          errorEl.textContent = 'Please select today or a future date.';
-          errorEl.classList.add('visible');
-        }
-        if (fieldWrapper) {
-          fieldWrapper.classList.add('error');
-        }
+        showFieldError(field, 'Please select today or a future date.');
         return false;
       }
 
       return true;
     }
 
-    // ============================================================
-    // URL Validation Helper
-    // ============================================================
     function isValidUrl(string) {
-      try {
-        new URL(string);
-        return true;
-      } catch {
-        return false;
-      }
+      try { new URL(string); return true; } catch { return false; }
     }
 
-    // ============================================================
-    // General field validation
-    // ============================================================
     function validateField(field) {
       const errorEl = document.querySelector(`.field-error[data-for="${field.name}"]`);
       const fieldWrapper = field.closest('.field');
@@ -1127,14 +1154,13 @@
         }
       }
 
-      // URL validation - Skip "NA"
       if ((field.name === 'jira_link' || field.name === 'documentation_link') && field.value.trim()) {
         const val = field.value.trim();
         if (val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') {
           return true;
         }
         if (!isValidUrl(val)) {
-          showFieldError(field, 'Please enter a valid URL (e.g., https://example.com) or "NA" for not applicable.');
+          showFieldError(field, 'Please enter a valid URL or "NA" for not applicable.');
           return false;
         }
       }
@@ -1156,7 +1182,7 @@
     }
 
     // ============================================================
-    // Terms validation
+    // Terms Validation
     // ============================================================
     function validateTerms() {
       const checkbox = document.getElementById('terms-checkbox');
@@ -1193,7 +1219,7 @@
     }
 
     // ============================================================
-    // Show validation errors in summary
+    // Error Summary
     // ============================================================
     function showErrorSummary(errors) {
       errorSummary.classList.add('visible');
@@ -1214,20 +1240,20 @@
     }
 
     // ============================================================
-    // Toast notification
+    // Toast
     // ============================================================
-    function showToast(message, type = 'error', title = '') {
+    function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container') || createToastContainer();
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       
-      const icons = { error: '❌', success: '✅', warning: '⚠️', info: 'ℹ️' };
-      const titles = { error: 'Error', success: 'Success', warning: 'Warning', info: 'Info' };
+      const icons = { success: '✅', error: '❌' };
+      const titles = { success: 'Success', error: 'Error' };
 
       toast.innerHTML = `
         <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
         <div class="toast-content">
-          <div class="toast-title">${title || titles[type] || 'Notice'}</div>
+          <div class="toast-title">${titles[type] || 'Notice'}</div>
           <div class="toast-message">${message}</div>
         </div>
         <button class="toast-close" aria-label="Dismiss notification">&times;</button>
@@ -1239,12 +1265,11 @@
         toast.classList.add('visible');
       });
 
-      const timeout = setTimeout(() => {
+      setTimeout(() => {
         dismissToast(toast);
       }, 5000);
 
       toast.querySelector('.toast-close').addEventListener('click', () => {
-        clearTimeout(timeout);
         dismissToast(toast);
       });
 
@@ -1267,7 +1292,7 @@
     }
 
     // ============================================================
-    // Real-time validation
+    // Event Listeners
     // ============================================================
     form.querySelectorAll('input, select, textarea').forEach(field => {
       field.addEventListener('blur', function() {
@@ -1292,7 +1317,6 @@
       });
     });
 
-    // Terms checkbox
     document.getElementById('terms-checkbox').addEventListener('change', function() {
       const errorContainer = document.getElementById('terms-error-container');
       const termsSection = document.querySelector('.terms-section');
@@ -1312,13 +1336,10 @@
       }
     });
 
-    // ============================================================
-    // Set initial workspace for edit mode
-    // ============================================================
     setInitialWorkspace();
 
     // ============================================================
-    // Form submission
+    // Form Submit
     // ============================================================
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -1329,10 +1350,6 @@
       const fields = this.querySelectorAll('input, select, textarea');
       
       fields.forEach(field => {
-        // Skip from_workspace and to_workspace validation as they are UI only
-        if (field.name === 'from_workspace' || field.name === 'to_workspace') {
-          return;
-        }
         if (!validateField(field)) {
           isValid = false;
           const label = field.closest('.field')?.querySelector('.field-label')?.textContent?.trim() || field.name;
@@ -1344,12 +1361,11 @@
         }
       });
 
-      // ========== WORKSPACE: Validate from/to are selected ==========
-      if (!fromWorkspace.value || !toWorkspace.value) {
+      if (!workspaceSelect.value) {
         isValid = false;
         fieldErrors.push({
           field: 'Workspace',
-          message: 'Please select both From and To workspaces.'
+          message: 'Please select a workspace.'
         });
       }
 
@@ -1367,7 +1383,6 @@
 
       if (!isValid) {
         showErrorSummary(fieldErrors);
-        // ========== FIX: Don't show toast for validation errors ==========
         return;
       }
 
@@ -1379,23 +1394,16 @@
         const value = formData.get(fieldName);
         
         if (fieldName === 'jira_link' || fieldName === 'documentation_link') {
-          if (!value || value.trim() === '') {
-            return 'NA';
-          }
-          if (value.trim().toUpperCase() === 'NA' || value.trim().toUpperCase() === 'N/A') {
-            return 'NA';
-          }
+          if (!value || value.trim() === '') return 'NA';
+          if (value.trim().toUpperCase() === 'NA' || value.trim().toUpperCase() === 'N/A') return 'NA';
           return value.trim();
         }
         
-        if (!value || value.trim() === '') {
-          return null;
-        }
+        if (!value || value.trim() === '') return null;
         return value.trim();
       }
 
-      // ========== WORKSPACE: Use hidden field value ==========
-      const workspaceValue = workspaceHidden.value;
+      const workspaceValue = getWorkspaceRoute(workspaceSelect.value);
 
       const data = {
         name: formData.get('name') || '',
@@ -1417,9 +1425,7 @@
       const url = isEdit ? `/api/projects/${projectId}` : '/api/projects';
       const method = isEdit ? 'PATCH' : 'POST';
 
-      submitBtn.disabled = true;
-      btnText.textContent = isEdit ? 'Saving...' : 'Registering...';
-      btnSpinner.style.display = 'inline-block';
+      showSubmitLoader();
 
       try {
         const response = await fetch(url, {
@@ -1434,7 +1440,7 @@
         const result = await response.json();
 
         if (!response.ok) {
-          let errorMessage = 'Failed to save project';
+          let errorMessage = 'Something went wrong. Please check the form details and try again.';
           if (result.detail) {
             if (Array.isArray(result.detail)) {
               const errors = result.detail.map(err => {
@@ -1451,21 +1457,18 @@
           throw new Error(errorMessage);
         }
 
-        showToast('Project saved successfully!', 'success', 'Success');
+        hideSubmitLoader();
+        showToast('Project saved successfully!', 'success');
         
         setTimeout(() => {
           window.location.href = `/projects/${result.project_id}`;
         }, 800);
 
       } catch (error) {
-        // ========== FIX: Don't show toast for 422 validation errors ==========
-        // Check if it's a 422 error (validation error from server)
-        if (error.message && error.message.includes('422')) {
-          // Show in error summary instead
-          showErrorSummary([{ field: 'Server Validation', message: error.message }]);
-        } else {
-          showToast(error.message, 'error', 'Error');
-        }
+        hideSubmitLoader();
+        
+        const errorMessage = error.message || 'Something went wrong. Please check the form details and try again.';
+        showErrorSummary([{ field: 'Error', message: errorMessage }]);
         
         submitBtn.disabled = false;
         btnText.textContent = isEdit ? 'Save changes' : 'Register and get project ID';
