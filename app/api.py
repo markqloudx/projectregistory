@@ -19,6 +19,10 @@ from app.models import (
     WorkerCompletion,
 )
 from app.service import RegistryService
+# ============================================================
+# ========== NEW: IMPORT TEAM MODELS ==========
+# ============================================================
+from app.models import TeamCreate
 
 router = APIRouter(prefix="/api", tags=["registry"])
 
@@ -283,3 +287,37 @@ def audit_events(
     limit: int = Query(default=500, ge=1, le=5000),
 ):
     return service.list_audit(current_actor, limit)
+
+
+# ============================================================
+# ========== NEW: TEAMS ENDPOINTS ==========
+# ============================================================
+
+@router.get("/teams")
+def list_teams(service: Service, current_actor: CurrentActor):
+    """List all active teams."""
+    return service.database.list_active_teams()
+
+
+@router.post("/teams", status_code=201)
+def create_team(
+    payload: TeamCreate,
+    service: Service,
+    current_actor: CurrentActor,
+    _mutation: Mutation,
+):
+    """Create a new team."""
+    # Only admins can create teams (optional)
+    service.authorization.require_admin(current_actor)
+    
+    from app.governance import utc_now
+    record = {
+        "team_name": payload.team_name,
+        "description": payload.description,
+        "created_at": utc_now(),
+        "created_by": current_actor.normalized,
+        "updated_at": utc_now(),
+        "updated_by": current_actor.normalized,
+        "is_active": True
+    }
+    return service.database.create_team(record)

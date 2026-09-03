@@ -505,3 +505,41 @@ class AssetScanRequest(StrictModel):
 
 class TagRepairRequest(StrictModel):
     asset: AssetSelection
+
+
+# ============================================================
+# ========== NEW: TEAMS MODELS ==========
+# ============================================================
+
+class TeamCreate(StrictModel):
+    team_name: str = Field(..., max_length=100, description="Name of the team")
+    description: str = Field(default="", description="Optional description of the team")
+
+    @field_validator("team_name")
+    @classmethod
+    def validate_team_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Team name is required")
+        if len(normalized) > 100:
+            raise ValueError("Team name must be 100 characters or less")
+        # Allow alphanumeric, spaces, hyphens, and underscores
+        if not all(c.isalnum() or c in " -_" for c in normalized):
+            raise ValueError("Team name can only contain letters, numbers, spaces, hyphens, and underscores")
+        return normalized
+
+
+class TeamUpdate(StrictModel):
+    description: str | None = Field(None, description="Updated description of the team")
+    is_active: bool | None = Field(None, description="Set to false to deactivate a team")
+
+
+class TeamRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    team_name: str
+    description: str = ""
+    created_at: datetime | None = None
+    created_by: str = ""
+    updated_at: datetime | None = None
+    updated_by: str = ""
+    is_active: bool = True

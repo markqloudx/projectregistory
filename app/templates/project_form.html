@@ -63,24 +63,27 @@
     <div class="field-hint">Max 200 characters. Use a clear, descriptive name.</div>
   </div>
   
-  <!-- ========== TEAM ========== -->
-  <div class="field">
+  <!-- ========== TEAM DROPDOWN WITH ADD OPTION INSIDE ========== -->
+  <label class="field">
     <div class="field-header">
       <span class="field-label">Team <span class="required">*</span></span>
       <span class="help-icon" data-tooltip="Select the team responsible for this project. This determines deployment permissions.">ⓘ</span>
     </div>
-    <select name="team_name" required>
+    <select name="team_name" id="team-select" required>
       <option value="">Select a team</option>
-      {% for team in settings.teams %}
-        <option value="{{ team }}" {% if project and project.team_name == team %}selected{% endif %}>{{ team }}</option>
+      {% for team in available_teams %}
+        <option value="{{ team.team_name }}" {% if project and project.team_name == team.team_name %}selected{% endif %}>
+          {{ team.team_name }}
+        </option>
       {% endfor %}
-      {% if project and project.team_name not in settings.teams %}
-        <option selected value="{{ project.team_name }}">{{ project.team_name }}</option>
-      {% endif %}
+      <!-- ========== ADD OPTION INSIDE DROPDOWN ========== -->
+      <option value="__add_new__" id="add-team-option" style="font-weight: 600; color: #c8102e; background: #fef2f2; border-top: 1px solid #e8edf2;">
+        ➕ Add New Team
+      </option>
     </select>
     <span class="field-error" data-for="team_name"></span>
-    <div class="field-hint">Select the team that owns this project.</div>
-  </div>
+    <div class="field-hint">Select an existing team or choose "Add New Team" to create one.</div>
+  </label>
   
   <!-- ========== DATA CLASSIFICATION ========== -->
   <div class="field">
@@ -250,6 +253,36 @@
     </button>
   </div>
 </form>
+
+<!-- ============================================================
+     ========== ADD TEAM MODAL ==========
+     ============================================================ -->
+<div id="add-team-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>Add New Team</h3>
+      <button type="button" class="modal-close" id="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label for="modal-team-name">Team Name <span class="required">*</span></label>
+        <input type="text" id="modal-team-name" placeholder="Enter team name" maxlength="100">
+        <span class="field-error" id="modal-team-error"></span>
+      </div>
+      <div class="modal-field">
+        <label for="modal-team-description">Description</label>
+        <textarea id="modal-team-description" placeholder="Optional description" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="button secondary" id="modal-cancel-btn">Cancel</button>
+      <button type="button" class="button primary" id="modal-save-btn">
+        <span class="btn-text">Add Team</span>
+        <span class="btn-spinner" style="display: none;">⏳</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ========== SUBMIT LOADER ========== -->
 <div id="submit-loader" style="display: none;">
@@ -804,6 +837,143 @@
   }
 
   /* ================================================================
+     ========== MODAL STYLES ==========
+     ================================================================ */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.25s ease;
+  }
+
+  .modal-overlay.show {
+    display: flex !important;
+  }
+
+  .modal-container {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e8edf2;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    color: #1a1a1a;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #8a8f98;
+    cursor: pointer;
+    padding: 0 8px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .modal-close:hover {
+    color: #1a1a1a;
+  }
+
+  .modal-body {
+    margin-bottom: 20px;
+  }
+
+  .modal-field {
+    margin-bottom: 16px;
+  }
+
+  .modal-field label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+
+  .modal-field input,
+  .modal-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: #1a1a1a;
+    background: #ffffff;
+    border: 2px solid #dce1e8;
+    border-radius: 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+  }
+
+  .modal-field input:focus,
+  .modal-field textarea:focus {
+    border-color: #c8102e;
+    box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.10);
+  }
+
+  .modal-field .field-error {
+    display: none;
+    font-size: 0.8rem;
+    color: #d32f2f;
+    margin-top: 4px;
+  }
+
+  .modal-field .field-error.visible {
+    display: block;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid #e8edf2;
+  }
+
+  .modal-footer .button {
+    padding: 10px 24px;
+    font-size: 0.9rem;
+  }
+
+  /* ================================================================
      ========== LOADER STYLES ==========
      ================================================================ */
 
@@ -947,6 +1117,7 @@
     .loader-spinner { width: 55px; height: 55px; }
     .loader-title { font-size: 0.95rem; }
     .loader-bar { width: 140px; }
+    .modal-container { padding: 24px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -974,6 +1145,43 @@
     const workspaceSelect = document.getElementById('workspace-select');
     const workspaceRouteDisplay = document.getElementById('workspace-route-display');
     const workspaceDisplay = document.getElementById('workspace-display');
+
+    // ============================================================
+    // ========== MODAL ELEMENTS ==========
+    // ============================================================
+    const modal = document.getElementById('add-team-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalTeamName = document.getElementById('modal-team-name');
+    const modalTeamDescription = document.getElementById('modal-team-description');
+    const modalTeamError = document.getElementById('modal-team-error');
+    const modalSaveBtnText = modalSaveBtn.querySelector('.btn-text');
+    const modalSaveBtnSpinner = modalSaveBtn.querySelector('.btn-spinner');
+
+    // ============================================================
+    // ========== TEAM DROPDOWN WITH ADD OPTION ==========
+    // ============================================================
+    const teamSelect = document.getElementById('team-select');
+
+    teamSelect?.addEventListener('change', function() {
+      if (this.value === '__add_new__') {
+        // Reset the dropdown to the previously selected value or empty
+        const previousValue = this.dataset.previousValue || '';
+        this.value = previousValue;
+        
+        // Open the modal
+        openModal();
+      } else {
+        // Store the current value as previous
+        this.dataset.previousValue = this.value;
+      }
+    });
+
+    // Store initial value
+    if (teamSelect) {
+      teamSelect.dataset.previousValue = teamSelect.value;
+    }
 
     function getWorkspaceRoute(selectedValue) {
       if (!selectedValue) return '';
@@ -1247,8 +1455,8 @@
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       
-      const icons = { success: '✅', error: '❌' };
-      const titles = { success: 'Success', error: 'Error' };
+      const icons = { success: '✅', error: '❌', warning: '⚠️' };
+      const titles = { success: 'Success', error: 'Error', warning: 'Warning' };
 
       toast.innerHTML = `
         <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
@@ -1290,6 +1498,186 @@
         toast.remove();
       }, 350);
     }
+
+    // ============================================================
+    // ========== MODAL CONTROLS ==========
+    // ============================================================
+    function openModal() {
+      modal.classList.add('show');
+      modalTeamName.value = '';
+      modalTeamDescription.value = '';
+      modalTeamError.classList.remove('visible');
+      modalTeamError.textContent = '';
+      modalSaveBtnText.textContent = 'Add Team';
+      modalSaveBtnSpinner.style.display = 'none';
+      modalSaveBtn.disabled = false;
+      setTimeout(() => modalTeamName.focus(), 100);
+    }
+
+    function closeModal() {
+      modal.classList.remove('show');
+    }
+
+    modalCloseBtn.addEventListener('click', closeModal);
+    modalCancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('show')) {
+        closeModal();
+      }
+    });
+
+    // ============================================================
+    // ========== SAVE TEAM FROM MODAL ==========
+    // ============================================================
+    modalSaveBtn.addEventListener('click', async function() {
+        const teamName = modalTeamName.value.trim();
+        
+        // Validate
+        if (!teamName) {
+          modalTeamError.textContent = 'Team name is required.';
+          modalTeamError.classList.add('visible');
+          modalTeamName.focus();
+          return;
+        }
+        
+        if (teamName.length > 100) {
+          modalTeamError.textContent = 'Team name must be 100 characters or less.';
+          modalTeamError.classList.add('visible');
+          modalTeamName.focus();
+          return;
+        }
+
+        // ========== Check for case-insensitive duplicates in dropdown ==========
+        const existingTeams = Array.from(teamSelect.options)
+          .map(opt => opt.value.toLowerCase())
+          .filter(val => val !== '' && val !== '__add_new__');
+        
+        if (existingTeams.includes(teamName.toLowerCase())) {
+          modalTeamError.textContent = `Team "${teamName}" already exists (case-insensitive). Please use a different name.`;
+          modalTeamError.classList.add('visible');
+          modalTeamName.focus();
+          // Highlight the existing team in dropdown
+          Array.from(teamSelect.options).forEach(opt => {
+            if (opt.value.toLowerCase() === teamName.toLowerCase()) {
+              opt.style.backgroundColor = '#fff3f3';
+              opt.style.color = '#d32f2f';
+            }
+          });
+          return;
+        }
+
+        // Clear error
+        modalTeamError.classList.remove('visible');
+        modalTeamError.textContent = '';
+
+        // Show spinner
+        modalSaveBtn.disabled = true;
+        modalSaveBtnText.textContent = 'Adding...';
+        modalSaveBtnSpinner.style.display = 'inline-block';
+
+        try {
+          const response = await fetch('/api/teams', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Governance-Request': 'v4'
+            },
+            body: JSON.stringify({
+              team_name: teamName,
+              description: modalTeamDescription.value.trim() || ''
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.detail || 'Failed to create team');
+          }
+
+          // Add new team to dropdown (before the "Add New" option)
+          const addOption = teamSelect.querySelector('#add-team-option');
+          const option = document.createElement('option');
+          option.value = result.team_name;
+          option.textContent = result.team_name;
+          option.selected = true;
+          
+          // Insert before the "Add New" option
+          teamSelect.insertBefore(option, addOption);
+          
+          // Store the new value as previous
+          teamSelect.dataset.previousValue = result.team_name;
+
+          // Close modal
+          closeModal();
+          showToast(`Team "${result.team_name}" created successfully!`, 'success');
+
+        } catch (error) {
+          console.error('Error creating team:', error);
+          modalTeamError.textContent = error.message || 'Failed to create team. Please try again.';
+          modalTeamError.classList.add('visible');
+        } finally {
+          modalSaveBtn.disabled = false;
+          modalSaveBtnText.textContent = 'Add Team';
+          modalSaveBtnSpinner.style.display = 'none';
+        }
+      });
+
+    // Enter key in modal inputs
+    modalTeamName.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        modalTeamDescription.focus();
+      }
+    });
+
+    modalTeamDescription.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        modalSaveBtn.click();
+      }
+    });
+
+    // Clear error on input
+    modalTeamName.addEventListener('input', function() {
+  const teamName = this.value.trim();
+  const errorEl = document.getElementById('modal-team-error');
+  
+  // Clear any existing error
+  errorEl.classList.remove('visible');
+  errorEl.textContent = '';
+  
+  // Reset all options styling
+  Array.from(teamSelect.options).forEach(opt => {
+    opt.style.backgroundColor = '';
+    opt.style.color = '';
+  });
+  
+  if (teamName.length > 0) {
+    // Check for case-insensitive duplicates
+    const existingTeams = Array.from(teamSelect.options)
+      .map(opt => opt.value.toLowerCase())
+      .filter(val => val !== '' && val !== '__add_new__');
+    
+    if (existingTeams.includes(teamName.toLowerCase())) {
+      errorEl.textContent = `Team "${teamName}" already exists (case-insensitive). Please use a different name.`;
+      errorEl.classList.add('visible');
+      // Highlight the existing team
+      Array.from(teamSelect.options).forEach(opt => {
+        if (opt.value.toLowerCase() === teamName.toLowerCase()) {
+          opt.style.backgroundColor = '#fff3f3';
+          opt.style.color = '#d32f2f';
+        }
+      });
+    }
+  }
+});
 
     // ============================================================
     // Event Listeners

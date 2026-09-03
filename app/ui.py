@@ -27,6 +27,11 @@ def _context(request: Request, **values: Any) -> dict[str, Any]:
     # ========== WORKSPACE: ADDED ==========
     available_workspaces = service.get_available_workspaces()
     
+    # ============================================================
+    # ========== NEW: GET AVAILABLE TEAMS FROM DATABASE ==========
+    # ============================================================
+    available_teams = service.database.list_active_teams()
+    
     return {
         "request": request,
         "actor": actor,
@@ -36,6 +41,7 @@ def _context(request: Request, **values: Any) -> dict[str, Any]:
         "is_approver": auth.is_approver(actor),
         "is_auditor": auth.is_auditor(actor),
         "available_workspaces": available_workspaces,  # ========== WORKSPACE: ADDED ==========
+        "available_teams": available_teams,  # ========== NEW: TEAMS ==========
         **values,
     }
 
@@ -155,8 +161,18 @@ def project_edit(project_id: str, request: Request):
     service = _service(request)
     actor = actor_from_request(request)
     
-    # Get project with terms status
+    # ============================================================
+    # ========== FIX: Use get_project_with_terms_status ==========
+    # ============================================================
     project_data = service.get_project_with_terms_status(project_id, actor)
+    
+    # Ensure terms fields exist (fallback values)
+    if "terms_accepted" not in project_data:
+        project_data["terms_accepted"] = False
+    if "terms_up_to_date" not in project_data:
+        project_data["terms_up_to_date"] = False
+    if "terms_version" not in project_data:
+        project_data["terms_version"] = service.settings.current_terms_version
     
     # Convert datetime/date objects to strings
     project_data = _serialize_project(project_data)

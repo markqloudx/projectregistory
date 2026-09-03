@@ -1186,10 +1186,24 @@ class RegistryService:
                     workspaces.append(ws)
         
         return workspaces
+
     # Internal helpers ----------------------------------------------------------
     def _validate_project_options(self, team_name: str, data_classification: str) -> None:
-        if self.settings.teams and team_name not in self.settings.teams:
-            raise ValidationError(f"Team '{team_name}' is not configured for this registry.")
+        # ============================================================
+        # ========== Case-insensitive team validation ==========
+        # ============================================================
+        # Validate team exists in the governed_teams table (case-insensitive)
+        team = self.database.get_team(team_name)
+        if not team:
+            # Get all teams for suggestion
+            all_teams = self.database.list_active_teams()
+            team_names = [t.get("team_name") for t in all_teams]
+            suggestion = f" Available teams: {', '.join(team_names[:10])}" if team_names else ""
+            raise ValidationError(
+                f"Team '{team_name}' is not a valid governed team. Please check the spelling (case-insensitive).{suggestion}"
+            )
+        
+        # Validate data classification from settings (unchanged)
         if (
             self.settings.data_classifications
             and data_classification not in self.settings.data_classifications

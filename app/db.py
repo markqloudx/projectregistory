@@ -200,6 +200,8 @@ class MemoryDatabase:
         self.evidence: list[dict[str, Any]] = []
         self.audit: list[dict[str, Any]] = []
         self._lock = threading.RLock()
+        # ========== NEW: Teams storage ==========
+        self.teams: dict[str, dict[str, Any]] = {}
 
     def ensure_tables(self) -> None:
         return None
@@ -424,6 +426,35 @@ class MemoryDatabase:
         with self._lock:
             return _clone(list(reversed(self.audit[-limit:])))
 
+    # ============================================================
+    # ========== NEW: TEAMS METHODS FOR MEMORY DATABASE ==========
+    # ============================================================
+    # db.py - Update MemoryDatabase class
+
+    def get_team(self, team_name: str) -> dict[str, Any] | None:
+        with self._lock:
+            team_name_lower = team_name.lower()
+            for key, value in self.teams.items():
+                if key.lower() == team_name_lower:
+                    return _clone(value)
+            return None
+
+    def list_active_teams(self) -> list[dict[str, Any]]:
+        with self._lock:
+            values = [item for item in self.teams.values() if item.get("is_active", True)]
+            values.sort(key=lambda item: item.get("team_name", "").lower())
+            return _clone(values)
+
+    def create_team(self, record: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            team_name = str(record["team_name"])
+            # Case-insensitive check
+            for key in self.teams.keys():
+                if key.lower() == team_name.lower():
+                    raise ConflictError(f"Team '{team_name}' already exists (case-insensitive). Please use a different name.")
+            value = dict(record)
+            self.teams[team_name] = _clone(value)
+            return _clone(value)
 
 class DatabricksSqlDatabase:
     def __init__(self, settings: Settings, token_provider: OAuthTokenProvider | None = None):
@@ -606,6 +637,20 @@ class DatabricksSqlDatabase:
               correlation_id STRING
             ) USING DELTA
             """,
+            # ============================================================
+            # ========== NEW: TEAMS TABLE ==========
+            # ============================================================
+            f"""
+            CREATE TABLE IF NOT EXISTS {self.settings.team_table} (
+              team_name STRING NOT NULL,
+              description STRING,
+              created_at TIMESTAMP NOT NULL,
+              created_by STRING NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              updated_by STRING NOT NULL,
+              is_active BOOLEAN DEFAULT TRUE
+            ) USING DELTA
+            """,
         ]
         for statement in statements:
             self._execute(statement)
@@ -617,6 +662,8 @@ class DatabricksSqlDatabase:
             self.settings.request_table: REQUEST_COLUMNS,
             self.settings.tag_table: TAG_COLUMNS,
             self.settings.audit_table: AUDIT_COLUMNS,
+            # ========== NEW: TEAMS TABLE ==========
+            self.settings.team_table: ("team_name", "description", "created_at", "created_by", "updated_at", "updated_by", "is_active"),
         }
         failures: list[str] = []
         for table_name, expected in required.items():
@@ -948,6 +995,46 @@ class DatabricksSqlDatabase:
         return self._fetchall(
             f"SELECT * FROM {self.settings.audit_table} ORDER BY event_at DESC LIMIT {max(1, min(limit, 5000))}"
         )
+
+    # ============================================================
+    # ========== NEW: TEAMS METHODS FOR DATABRICKS ==========
+    # ============================================================
+    def get_team(self, team_name: str) -> dict[str, Any] | None:
+        """Fetch a single team by name (case-insensitive)."""
+        return self._fetchone(
+            f"SELECT team_name, description, is_active FROM {self.settings.team_table} WHERE LOWER(team_name) = LOWER(?) AND is_active = TRUE",
+            [team_name]
+        )
+
+    def list_active_teams(self) -> list[dict[str, Any]]:
+        """List all active teams (case-insensitive sorted)."""
+        return self._fetchall(
+            f"SELECT team_name, description FROM {self.settings.team_table} WHERE is_active = TRUE ORDER BY LOWER(team_name)"
+        )
+
+    def create_team(self, record: Mapping[str, Any]) -> dict[str, Any]:
+        """Create a new team with case-insensitive uniqueness check."""
+        # Check if team already exists (case-insensitive)
+        existing = self._fetchone(
+            f"SELECT team_name FROM {self.settings.team_table} WHERE LOWER(team_name) = LOWER(?)",
+            [record["team_name"]]
+        )
+        if existing:
+            raise ConflictError(f"Team '{record['team_name']}' already exists (case-insensitive). Please use a different name.")
+        
+        self._execute(
+            f"INSERT INTO {self.settings.team_table} (team_name, description, created_at, created_by, updated_at, updated_by, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                record["team_name"],
+                record.get("description", ""),
+                record.get("created_at", utc_now()),
+                record.get("created_by", ""),
+                record.get("updated_at", utc_now()),
+                record.get("updated_by", ""),
+                record.get("is_active", True)
+            ]
+        )
+        return self.get_team(record["team_name"])
 
 
 def create_database(settings: Settings, token_provider: OAuthTokenProvider | None = None) -> RegistryDatabase:

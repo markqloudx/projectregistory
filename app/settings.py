@@ -114,6 +114,13 @@ class Settings:
     def audit_table(self) -> str:
         return self.table("governance_audit")
 
+    # ============================================================
+    # ========== NEW: TEAMS TABLE PROPERTY ==========
+    # ============================================================
+    @property
+    def team_table(self) -> str:
+        return self.table("governed_teams")
+
     def table(self, name: str) -> str:
         return f"`{self.registry_catalog}`.`{self.registry_schema}`.`{name}`"
 
