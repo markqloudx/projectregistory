@@ -16,7 +16,7 @@ env:
   - name: DATABRICKS_WAREHOUSE_ID
     valueFrom: sql-warehouse
   - name: REGISTRY_DATABRICKS_HOST
-    value: https://dbc-ee468813-8a08.cloud.databricks.com
+    value: https://dbc-8589af37-05e5.cloud.databricks.com
   - name: REGISTRY_CATALOG
     value: it_prod
   - name: REGISTRY_SCHEMA

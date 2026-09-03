@@ -1091,50 +1091,101 @@ class RegistryService:
         return self.database.list_audit(limit)
 
     # ========== WORKSPACE: ADDED METHOD ==========
- # ========== WORKSPACE: ADDED METHOD ==========
+ # ========== WORKSPACE: UPDATED METHOD TO USE VIEW ==========
     def get_available_workspaces(self) -> list[str]:
-        """Get list of available workspace business-aliases (only workspaces with 2 parts)"""
+        """
+        Get list of available workspace business-aliases.
+        
+        Tries in order:
+        1. vw_workspaces view (created in registry schema)
+        2. governed_projects table (existing projects)
+        3. Settings (dev_workspace_name, prod_workspace_name)
+        4. Hardcoded fallback
+        """
+        workspaces = []
+        seen = set()
+        
+        # ========== SOURCE 1: View ==========
         try:
-            # Query workspaces from system table
-            rows = self.database._fetchall("""
+            rows = self.database._fetchall(f"""
                 SELECT 
-                    workspace_name
-                FROM system.access.workspaces_latest
-                WHERE status = 'RUNNING'
-                ORDER BY workspace_name
+                    workspace_alias
+                FROM `{self.settings.registry_catalog}`.`{self.settings.registry_schema}`.`vw_workspaces`
+                ORDER BY workspace_alias
             """)
             
-            workspaces = []
-            seen = set()
             for row in rows:
-                if row.get("workspace_name"):
-                    name = str(row["workspace_name"])
-                    # Split by '-' and check if exactly 2 parts
-                    parts = name.split('-')
-                    # Only include if exactly 2 parts (e.g., "it-dev" -> ["it", "dev"])
-                    if len(parts) == 2:
-                        base = parts[0]  # Take first part as business-alias
+                if row.get("workspace_alias"):
+                    alias = str(row["workspace_alias"]).strip()
+                    if alias and alias not in seen:
+                        seen.add(alias)
+                        workspaces.append(alias)
+            
+            # If we got data from the view, return it
+            if workspaces:
+                return workspaces
+                
+        except Exception as e:
+            print(f"Error fetching workspaces from view: {e}")
+        
+        # ========== SOURCE 2: governed_projects ==========
+        try:
+            rows = self.database._fetchall(f"""
+                SELECT DISTINCT 
+                    workspace
+                FROM {self.settings.project_table}
+                WHERE workspace IS NOT NULL 
+                AND workspace != ''
+                AND workspace != 'Not Set'
+                ORDER BY workspace
+            """)
+            
+            for row in rows:
+                if row.get("workspace"):
+                    name = str(row["workspace"])
+                    if ' to ' in name:
+                        parts = name.split(' to ')
+                        if len(parts) >= 1:
+                            base = parts[0].replace('-dev', '').replace('-prod', '')
+                            if base and base not in seen:
+                                seen.add(base)
+                                workspaces.append(base)
+                    else:
+                        base = name.split('-')[0] if '-' in name else name
                         if base and base not in seen:
                             seen.add(base)
                             workspaces.append(base)
-            
-            # If no workspaces found, fallback to config
-            if not workspaces:
-                workspaces = [
-                    self.settings.dev_workspace_name.split('-')[0],
-                    self.settings.prod_workspace_name.split('-')[0]
-                ]
-                workspaces = list(dict.fromkeys(workspaces))
-            
-            return workspaces
-            
         except Exception as e:
-            print(f"Error fetching workspaces from system table: {e}")
-            workspaces = [
-                self.settings.dev_workspace_name.split('-')[0],
-                self.settings.prod_workspace_name.split('-')[0]
-            ]
-            return list(dict.fromkeys(workspaces))
+            print(f"Error fetching from governed_projects: {e}")
+        
+        # ========== SOURCE 3: Settings ==========
+        if not workspaces:
+            try:
+                dev_name = self.settings.dev_workspace_name
+                if dev_name:
+                    base = dev_name.split('-')[0] if '-' in dev_name else dev_name
+                    if base and base not in seen:
+                        seen.add(base)
+                        workspaces.append(base)
+                
+                prod_name = self.settings.prod_workspace_name
+                if prod_name and prod_name != dev_name:
+                    base = prod_name.split('-')[0] if '-' in prod_name else prod_name
+                    if base and base not in seen:
+                        seen.add(base)
+                        workspaces.append(base)
+            except:
+                pass
+        
+        # ========== SOURCE 4: Hardcoded ==========
+        if not workspaces:
+            default_workspaces = ['it', 'operations', 'platform', 'sales', 'software', 'technology']
+            for ws in default_workspaces:
+                if ws not in seen:
+                    seen.add(ws)
+                    workspaces.append(ws)
+        
+        return workspaces
     # Internal helpers ----------------------------------------------------------
     def _validate_project_options(self, team_name: str, data_classification: str) -> None:
         if self.settings.teams and team_name not in self.settings.teams:
